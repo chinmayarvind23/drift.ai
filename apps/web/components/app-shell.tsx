@@ -22,7 +22,7 @@ const NAV_ITEMS = [
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { scan } = useAuditWorkspace();
-  const { theme, toggleTheme } = useTheme();
+  const { toggleTheme } = useTheme();
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -45,10 +45,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Button
                 variant="outline"
                 className="h-9 rounded-[8px] border-border bg-card px-3"
-                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label="Toggle color mode"
                 onClick={toggleTheme}
               >
-                {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                <Sun className="hidden size-4 dark:block" />
+                <Moon className="size-4 dark:hidden" />
               </Button>
             </div>
           </div>

@@ -6,14 +6,6 @@ class HealthResponse(BaseModel):
     plaid_configured: bool
 
 
-class SyntheticUserSummary(BaseModel):
-    id: str
-    name: str
-    scenario: str
-    income_event: str
-    transaction_count: int = Field(ge=0)
-
-
 class PlaidLinkTokenRequest(BaseModel):
     user_id: str = Field(min_length=1)
 

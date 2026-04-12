@@ -61,7 +61,7 @@ export default function EvidencePage() {
         <div className="mt-5 space-y-3">
           {evidencePage.items.length > 0 ? evidencePage.items.map((transaction) => <EvidenceRow key={transaction.sourceHash} transaction={transaction} onEdit={applyEvidenceEdit} />) : (
             <div className="surface-card text-sm leading-6 text-muted-foreground">
-              Load a test profile or import a CSV on the Scan page to review evidence.
+              Import a CSV or sync Plaid on the Bank sync page to review evidence.
             </div>
           )}
         </div>

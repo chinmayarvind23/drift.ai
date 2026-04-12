@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   buildDemoDriftScan,
   buildDriftScan,
   buildDriftScanFromCsv,
   type ProjectionScenario
 } from "../lib/drift-scan";
-import { getSyntheticUser, listSyntheticUsers } from "../lib/synthetic-users";
 
 describe("buildDemoDriftScan", () => {
   it("builds a dashboard-ready drift scan from seeded transactions", () => {
@@ -50,31 +50,6 @@ describe("buildDemoDriftScan", () => {
   });
 });
 
-describe("synthetic users", () => {
-  it("provides varied dummy users with enough transaction history to stress the scan", () => {
-    const users = listSyntheticUsers();
-
-    expect(users).toHaveLength(5);
-    expect(users.every((user) => user.transactions.length >= 90)).toBe(true);
-    expect(new Set(users.map((user) => user.scenario)).size).toBe(users.length);
-  });
-
-  it("runs synthetic users through the same drift scan pipeline", () => {
-    const user = getSyntheticUser("nina-stress-convenience");
-
-    expect(user).toBeDefined();
-
-    const scan = buildDriftScan(user!.transactions, user!.name);
-
-    expect(scan.transactionCount).toBeGreaterThanOrEqual(90);
-    expect(scan.topCategories[0]).toMatchObject({
-      category: "Delivery",
-      stateLabel: "High drift"
-    });
-    expect(scan.monthlyOverspendCents).toBeGreaterThan(100_000);
-  });
-});
-
 describe("buildDriftScanFromCsv", () => {
   it("uses a shorter old-normal and recent-normal window when Plaid history is short", () => {
     const scan = buildDriftScan(
@@ -106,6 +81,105 @@ describe("buildDriftScanFromCsv", () => {
       category: "Dining",
       monthlyOverspendLabel: "$50"
     });
+  });
+
+  it("describes a valid scan with no category increases as contraction", () => {
+    const scan = buildDriftScan(
+      [
+        {
+          transactionDate: "2026-03-15",
+          merchantName: "Bar Luce",
+          amountCents: 9000,
+          category: "Dining",
+          sourceHash: "plaid-a",
+          source: "plaid"
+        },
+        {
+          transactionDate: "2026-04-15",
+          merchantName: "Bar Luce",
+          amountCents: 4000,
+          category: "Dining",
+          sourceHash: "plaid-b",
+          source: "plaid"
+        }
+      ],
+      "Plaid sandbox"
+    );
+
+    expect(scan.scanState).toBe("contraction");
+    expect(scan.scanStateTitle).toBe("No overspending found");
+    expect(scan.scanStateMessage).toMatch(/spending decreased/i);
+    expect(scan.score).toBe(0);
+  });
+
+  it("makes a zero drift score read as a healthy result instead of a failed scan", () => {
+    const scan = buildDriftScan(
+      [
+        {
+          transactionDate: "2026-03-15",
+          merchantName: "Market",
+          amountCents: 5000,
+          category: "Groceries",
+          sourceHash: "plaid-a",
+          source: "plaid"
+        },
+        {
+          transactionDate: "2026-04-15",
+          merchantName: "Market",
+          amountCents: 5000,
+          category: "Groceries",
+          sourceHash: "plaid-b",
+          source: "plaid"
+        }
+      ],
+      "Plaid sandbox"
+    );
+
+    expect(scan.scanState).toBe("stable");
+    expect(scan.scanStateTitle).toBe("Everything looks steady");
+    expect(scan.scanStateMessage).toMatch(/close to your old normal/i);
+    expect(scan.monthlyOverspendLabel).toBe("$0");
+  });
+
+  it("imports the healthy zero-drift CSV fixture for manual verification", () => {
+    const csv = readFileSync(
+      new URL("./fixtures/healthy-zero-drift.csv", import.meta.url),
+      "utf8"
+    );
+
+    const scan = buildDriftScanFromCsv(csv);
+
+    expect(scan.score).toBe(0);
+    expect(scan.monthlyOverspendLabel).toBe("$0");
+    expect(scan.investmentGainLabel).toBe("$0");
+    expect(scan.scanStateTitle).toBe("Everything looks steady");
+  });
+
+  it("adapts the scan window to the uploaded transaction duration", () => {
+    const scan = buildDriftScan(
+      [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01",
+        "2026-02",
+        "2026-03"
+      ].map((month, index) => ({
+        transactionDate: `${month}-15`,
+        merchantName: "Bar Luce",
+        amountCents: index < 4 ? 4000 : 9000,
+        category: "Dining",
+        sourceHash: `csv-${month}`,
+        source: "csv" as const
+      })),
+      "Imported CSV"
+    );
+
+    expect(scan.baselineWindowLabel).toBe("Aug 2025 - Nov 2025");
+    expect(scan.recentWindowLabel).toBe("Dec 2025 - Mar 2026");
+    expect(scan.monthlyOverspendLabel).toBe("$50");
   });
 
   it("builds a drift scan from uploaded CSV text", () => {

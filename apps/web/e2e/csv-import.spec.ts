@@ -1,8 +1,12 @@
 import { expect, test } from "@playwright/test";
 
-test("imports CSV and updates the Drift Scan dashboard", async ({ page }) => {
+async function importFixture(page: import("@playwright/test").Page, fixtureName: string) {
   await page.goto("/");
-  await page.getByLabel("Import CSV").setInputFiles("tests/fixtures/sample-drift.csv");
+  await page.getByLabel("Import CSV").setInputFiles(`tests/fixtures/${fixtureName}`);
+}
+
+test("imports CSV and updates the Drift Scan dashboard", async ({ page }) => {
+  await importFixture(page, "sample-drift.csv");
 
   await expect(page.getByText("Imported 12 transactions from sample-drift.csv.")).toBeVisible();
   await expect(page.getByText("Imported CSV")).toBeVisible();
@@ -12,20 +16,15 @@ test("imports CSV and updates the Drift Scan dashboard", async ({ page }) => {
   await expect(page.getByText("Old normal $20. Recent normal $60.")).toBeVisible();
 });
 
-test("loads a synthetic dummy user without requiring a CSV", async ({ page }) => {
+test("keeps demo-only test profile controls off the Scan page", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("Test profile").selectOption("nina-stress-convenience");
-  await page.getByRole("button", { name: "Load test profile" }).click();
 
-  await expect(page.getByText("Loaded 90 synthetic transactions for Nina Patel.")).toBeVisible();
-  await expect(page.getByText("Stress convenience spending:")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Delivery" })).toBeVisible();
+  await expect(page.getByLabel("Test profile")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Load test profile" })).toHaveCount(0);
 });
 
 test("customizes the saved-and-invested scenario", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("Test profile").selectOption("maya-new-job");
-  await page.getByRole("button", { name: "Load test profile" }).click();
+  await importFixture(page, "sample-drift.csv");
 
   await page.getByRole("link", { name: "What-if" }).click();
   await page.getByLabel("Years").fill("20");
@@ -35,9 +34,7 @@ test("customizes the saved-and-invested scenario", async ({ page }) => {
 });
 
 test("edits evidence category and private note", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("Test profile").selectOption("maya-new-job");
-  await page.getByRole("button", { name: "Load test profile" }).click();
+  await importFixture(page, "evidence-review.csv");
 
   await page.getByRole("link", { name: "Evidence" }).click();
   const firstEvidenceRow = page.locator("section", { hasText: "Evidence review" }).locator(".grid").nth(1);
@@ -50,9 +47,7 @@ test("edits evidence category and private note", async ({ page }) => {
 });
 
 test("filters and paginates evidence review", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("Test profile").selectOption("maya-new-job");
-  await page.getByRole("button", { name: "Load test profile" }).click();
+  await importFixture(page, "evidence-review.csv");
 
   await page.getByRole("link", { name: "Evidence" }).click();
   await expect(page.getByText("Page 1 of")).toBeVisible();
@@ -66,14 +61,13 @@ test("filters and paginates evidence review", async ({ page }) => {
 });
 
 test("persists local audit state across refresh and pages", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("Test profile").selectOption("maya-new-job");
-  await page.getByRole("button", { name: "Load test profile" }).click();
+  await importFixture(page, "evidence-review.csv");
   await page.getByRole("link", { name: "Evidence" }).click();
 
   const firstEvidenceRow = page.locator("section", { hasText: "Evidence review" }).locator(".grid").nth(1);
   await firstEvidenceRow.getByLabel("Category").selectOption("Education");
   await firstEvidenceRow.getByLabel("Private note").fill("Persist this note.");
+  await page.waitForTimeout(500);
 
   await page.reload();
 
@@ -88,7 +82,7 @@ test("toggles dark mode and opens the recovery plan", async ({ page }) => {
   await page.addInitScript(() => window.localStorage.setItem("drift.theme", "light"));
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page.getByRole("button", { name: "Toggle color mode" }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
 
   await page.getByRole("link", { name: "Plan" }).click();

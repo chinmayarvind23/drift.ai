@@ -2,8 +2,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.settings import Settings, get_settings
-from app.schemas import HealthResponse, SyntheticUserSummary
-from app.services.synthetic_data import SYNTHETIC_USERS
+from app.schemas import HealthResponse
 from app.routes.audit import router as audit_router
 from app.routes.evidence import router as evidence_router
 from app.routes.insights import router as insights_router
@@ -30,8 +29,3 @@ app.include_router(settings_router)
 @app.get("/health", response_model=HealthResponse)
 def health(settings: Settings = Depends(get_settings)) -> HealthResponse:
     return HealthResponse(status="ok", plaid_configured=settings.plaid_is_configured)
-
-
-@app.get("/demo/users", response_model=list[SyntheticUserSummary])
-def demo_users() -> list[SyntheticUserSummary]:
-    return SYNTHETIC_USERS

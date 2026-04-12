@@ -112,7 +112,7 @@ export function preparePlaidTransactionsForScan(
     transactions.map((transaction) => transaction.transactionDate.slice(0, 7))
   ).size;
 
-  if (monthCount >= 6) {
+  if (monthCount >= 2) {
     return {
       transactions,
       hasEnoughHistory: true,
@@ -131,7 +131,7 @@ export function preparePlaidTransactionsForScan(
   return {
     transactions,
     hasEnoughHistory: false,
-    message: `Plaid returned only ${monthCount} month${monthCount === 1 ? "" : "s"} of spending history. Drift needs at least 6 months to calculate a real old-normal vs recent-normal scan.`
+    message: `Plaid returned only ${monthCount} month${monthCount === 1 ? "" : "s"} of spending history. Drift needs at least 2 months to calculate a real old-normal vs recent-normal scan.`
   };
 }
 
@@ -165,18 +165,33 @@ function mapPlaidCategory(transaction: PlaidTransaction): string {
   const detailed = transaction.personal_finance_category?.detailed ?? "";
   const primary = transaction.personal_finance_category?.primary ?? "";
   const legacyCategory = transaction.category?.[0] ?? "";
-  const rawCategory = `${detailed} ${primary} ${legacyCategory}`.toUpperCase();
+  const merchantText = `${transaction.merchant_name ?? ""} ${transaction.name ?? ""}`;
+  const rawCategory = `${detailed} ${primary} ${legacyCategory} ${merchantText}`.toUpperCase();
 
-  if (rawCategory.includes("RESTAURANT") || rawCategory.includes("FOOD_AND_DRINK")) {
+  if (
+    rawCategory.includes("RESTAURANT") ||
+    rawCategory.includes("FOOD_AND_DRINK") ||
+    rawCategory.includes("SWEETGREEN") ||
+    rawCategory.includes("CAFE")
+  ) {
     return "Dining";
   }
-  if (rawCategory.includes("GENERAL_MERCHANDISE") || rawCategory.includes("SHOPS")) {
+  if (
+    rawCategory.includes("GENERAL_MERCHANDISE") ||
+    rawCategory.includes("SHOPS") ||
+    rawCategory.includes("TARGET")
+  ) {
     return "Shopping";
   }
-  if (rawCategory.includes("TRANSPORT") || rawCategory.includes("TAXI")) {
+  if (
+    rawCategory.includes("TRANSPORT") ||
+    rawCategory.includes("TAXI") ||
+    rawCategory.includes("UBER") ||
+    rawCategory.includes("LYFT")
+  ) {
     return "Rides";
   }
-  if (rawCategory.includes("GROCER")) {
+  if (rawCategory.includes("GROCER") || rawCategory.includes("WHOLE FOODS")) {
     return "Groceries";
   }
   if (rawCategory.includes("ENTERTAINMENT")) {

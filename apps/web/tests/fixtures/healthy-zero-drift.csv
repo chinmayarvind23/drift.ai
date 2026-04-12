@@ -1,0 +1,19 @@
+date,merchant,amount,category
+2025-07-04,Bodega,-35,Dining
+2025-08-04,Bodega,-35,Dining
+2025-09-04,Bodega,-35,Dining
+2026-01-04,Bar Luce,-35,Dining
+2026-02-04,Bar Luce,-35,Dining
+2026-03-04,Bar Luce,-35,Dining
+2025-07-05,Market,-80,Groceries
+2025-08-05,Market,-80,Groceries
+2025-09-05,Market,-80,Groceries
+2026-01-05,Market,-80,Groceries
+2026-02-05,Market,-80,Groceries
+2026-03-05,Market,-80,Groceries
+2025-07-12,Train Pass,-45,Rides
+2025-08-12,Train Pass,-45,Rides
+2025-09-12,Train Pass,-45,Rides
+2026-01-12,Train Pass,-45,Rides
+2026-02-12,Train Pass,-45,Rides
+2026-03-12,Train Pass,-45,Rides

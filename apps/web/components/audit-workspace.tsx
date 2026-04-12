@@ -15,6 +15,7 @@ import {
   decryptAuditState,
   encryptAuditState,
   getOrCreateAuditStorageSecret,
+  isRemovedSyntheticProfileState,
   parsePersistedAuditState,
   serializeAuditState
 } from "@/lib/audit-persistence";
@@ -25,7 +26,6 @@ import {
   type DriftScan,
   type ProjectionScenario
 } from "@/lib/drift-scan";
-import { listSyntheticUsers, type SyntheticUser } from "@/lib/synthetic-users";
 import { applyTransactionEdits, type TransactionEdit } from "@/lib/transaction-edits";
 
 const DEFAULT_SCENARIO: ProjectionScenario = {
@@ -49,22 +49,16 @@ interface AuditWorkspaceContextValue {
     sourceLabel?: string,
     message?: string
   ) => void;
-  loadSyntheticUser: () => void;
   projectionScenario: ProjectionScenario;
   scan: DriftScan;
-  selectedSyntheticUser: SyntheticUser | null;
-  selectedSyntheticUserId: string;
   setProjectionScenario: (scenario: ProjectionScenario) => void;
-  setSelectedSyntheticUserId: (userId: string) => void;
   sourceMessage: string | null;
-  syntheticUsers: SyntheticUser[];
   transactionEdits: Record<string, TransactionEdit>;
 }
 
 const AuditWorkspaceContext = createContext<AuditWorkspaceContextValue | null>(null);
 
 export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
-  const syntheticUsers = useMemo(() => listSyntheticUsers(), []);
   const [projectionScenario, setProjectionScenarioState] =
     useState<ProjectionScenario>(DEFAULT_SCENARIO);
   const [activeEvidence, setActiveEvidence] = useState<ActiveEvidence>({
@@ -75,8 +69,6 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
   const [scan, setScan] = useState<DriftScan>(() => buildDemoDriftScan(DEFAULT_SCENARIO));
   const [importError, setImportError] = useState<string | null>(null);
   const [sourceMessage, setSourceMessage] = useState<string | null>(null);
-  const [selectedSyntheticUserId, setSelectedSyntheticUserId] = useState(syntheticUsers[0]?.id ?? "");
-  const [selectedSyntheticUser, setSelectedSyntheticUser] = useState<SyntheticUser | null>(null);
   const [hasRestored, setHasRestored] = useState(false);
 
   const editedTransactions = useMemo(
@@ -107,6 +99,12 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (isRemovedSyntheticProfileState(restored)) {
+        window.localStorage.removeItem(AUDIT_STATE_STORAGE_KEY);
+        setHasRestored(true);
+        return;
+      }
+
       setProjectionScenarioState(restored.projectionScenario);
       setActiveEvidence({
         transactions: restored.transactions,
@@ -114,12 +112,6 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
       });
       setTransactionEdits(restored.transactionEdits);
       setSourceMessage(restored.sourceMessage);
-      setSelectedSyntheticUserId(restored.selectedSyntheticUserId ?? syntheticUsers[0]?.id ?? "");
-      setSelectedSyntheticUser(
-        restored.selectedSyntheticUserId
-          ? syntheticUsers.find((user) => user.id === restored.selectedSyntheticUserId) ?? null
-          : null
-      );
       setScanFromTransactions(
         restored.transactions,
         restored.sourceLabel,
@@ -134,7 +126,7 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, [syntheticUsers]);
+  }, []);
 
   useEffect(() => {
     if (!hasRestored) {
@@ -145,7 +137,6 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
       const state = {
         sourceLabel: activeEvidence.sourceLabel,
         sourceMessage,
-        selectedSyntheticUserId: selectedSyntheticUser?.id ?? null,
         projectionScenario,
         transactions: activeEvidence.transactions,
         transactionEdits
@@ -164,7 +155,6 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
     activeEvidence,
     hasRestored,
     projectionScenario,
-    selectedSyntheticUser,
     sourceMessage,
     transactionEdits
   ]);
@@ -181,7 +171,6 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
       const transactions = parseTransactionsCsv(csv);
       setActiveEvidence({ transactions, sourceLabel: "Imported CSV" });
       setTransactionEdits({});
-      setSelectedSyntheticUser(null);
       setSourceMessage(`Imported ${transactions.length} transactions from ${file.name}.`);
       setImportError(null);
       setScanFromTransactions(transactions, "Imported CSV", projectionScenario, {});
@@ -190,25 +179,6 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
     } finally {
       event.target.value = "";
     }
-  }
-
-  function loadSyntheticUser() {
-    const syntheticUser = syntheticUsers.find((user) => user.id === selectedSyntheticUserId);
-
-    if (!syntheticUser) {
-      setImportError("Choose a test profile before loading evidence.");
-      return;
-    }
-
-    setActiveEvidence({
-      transactions: syntheticUser.transactions,
-      sourceLabel: syntheticUser.name
-    });
-    setTransactionEdits({});
-    setSelectedSyntheticUser(syntheticUser);
-    setSourceMessage(`Loaded ${syntheticUser.transactions.length} synthetic transactions for ${syntheticUser.name}.`);
-    setImportError(null);
-    setScanFromTransactions(syntheticUser.transactions, syntheticUser.name, projectionScenario, {});
   }
 
   function loadPlaidTransactions(
@@ -221,7 +191,6 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
       sourceLabel
     });
     setTransactionEdits({});
-    setSelectedSyntheticUser(null);
     setSourceMessage(message);
     setImportError(null);
     setScanFromTransactions(transactions, sourceLabel, projectionScenario, {});
@@ -279,15 +248,10 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
         importError,
         loadCsvFile,
         loadPlaidTransactions,
-        loadSyntheticUser,
         projectionScenario,
         scan,
-        selectedSyntheticUser,
-        selectedSyntheticUserId,
         setProjectionScenario,
-        setSelectedSyntheticUserId,
         sourceMessage,
-        syntheticUsers,
         transactionEdits
       }}
     >

@@ -7,15 +7,23 @@ export const AUDIT_STATE_STORAGE_KEY = "drift.audit.v1";
 const AUDIT_STATE_VERSION = 1;
 const ENCRYPTED_AUDIT_STATE_VERSION = 2;
 const ENCRYPTION_PREFIX = "drift-encrypted:";
+const encryptionKeys = new Map<string, Promise<CryptoKey>>();
 
 export interface PersistedAuditState {
   sourceLabel: string;
   sourceMessage: string | null;
-  selectedSyntheticUserId: string | null;
   projectionScenario: ProjectionScenario;
   transactions: DriftTransaction[] | null;
   transactionEdits: Record<string, TransactionEdit>;
 }
+
+const REMOVED_SYNTHETIC_SOURCE_LABELS = new Set([
+  "Maya Chen",
+  "Jordan Ellis",
+  "Sam Rivera",
+  "Nina Patel",
+  "Alex Morgan"
+]);
 
 interface PersistedAuditStateEnvelope {
   version: typeof AUDIT_STATE_VERSION;
@@ -45,6 +53,27 @@ export function parsePersistedAuditState(value: string | null): PersistedAuditSt
   } catch {
     return null;
   }
+}
+
+export function isRemovedSyntheticProfileState(value: unknown): boolean {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const state = value as {
+    sourceLabel?: unknown;
+    sourceMessage?: unknown;
+    selectedSyntheticUserId?: unknown;
+  };
+
+  return (
+    typeof state.selectedSyntheticUserId === "string" ||
+    (typeof state.sourceLabel === "string" &&
+      REMOVED_SYNTHETIC_SOURCE_LABELS.has(state.sourceLabel)) ||
+    (typeof state.sourceMessage === "string" &&
+      state.sourceMessage.startsWith("Loaded ") &&
+      state.sourceMessage.includes(" synthetic transactions"))
+  );
 }
 
 export async function encryptAuditState(
@@ -123,7 +152,7 @@ function encodeBase64(value: Uint8Array): string {
   return btoa(binary);
 }
 
-function decodeBase64(value: string): Uint8Array {
+function decodeBase64(value: string): ArrayBuffer {
   const binary = atob(value);
   const bytes = new Uint8Array(binary.length);
 
@@ -131,10 +160,23 @@ function decodeBase64(value: string): Uint8Array {
     bytes[index] = binary.charCodeAt(index);
   }
 
-  return bytes;
+  return bytes.buffer as ArrayBuffer;
 }
 
 async function deriveEncryptionKey(secret: string): Promise<CryptoKey> {
+  const cachedKey = encryptionKeys.get(secret);
+
+  if (cachedKey) {
+    return cachedKey;
+  }
+
+  const key = deriveEncryptionKeyFromSecret(secret);
+  encryptionKeys.set(secret, key);
+
+  return key;
+}
+
+async function deriveEncryptionKeyFromSecret(secret: string): Promise<CryptoKey> {
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),

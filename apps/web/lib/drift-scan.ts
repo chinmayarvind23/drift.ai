@@ -7,6 +7,7 @@ import {
 } from "@drift/core";
 
 type CategoryStateLabel = "Stable" | "Watch" | "High drift";
+type ScanState = "not_enough_data" | "contraction" | "stable" | "drift_detected";
 
 export interface DriftScanCategory {
   category: string;
@@ -36,6 +37,9 @@ export interface DriftScan {
   projectionScenarioLabel: string;
   baselineWindowLabel: string;
   recentWindowLabel: string;
+  scanState: ScanState;
+  scanStateTitle: string;
+  scanStateMessage: string;
   topCategories: DriftScanCategory[];
   privacyItems: string[];
 }
@@ -84,6 +88,7 @@ export function buildDriftScan(
   const driftingCategories = analysis.categories.filter(
     (category) => category.monthlyOverspendCents > 0
   );
+  const scanState = describeScanState(analysis.categories, driftingCategories);
   const monthlyOverspendCents = driftingCategories.reduce(
     (total, category) => total + category.monthlyOverspendCents,
     0
@@ -109,6 +114,9 @@ export function buildDriftScan(
     projectionScenarioLabel: formatProjectionScenario(projectionScenario),
     baselineWindowLabel: formatMonthWindow(analysis.baselineMonths),
     recentWindowLabel: formatMonthWindow(analysis.recentMonths),
+    scanState: scanState.state,
+    scanStateTitle: scanState.title,
+    scanStateMessage: scanState.message,
     topCategories: analysis.categories.map(toDriftScanCategory),
     privacyItems: [
       "Raw transactions stay local in this demo flow.",
@@ -233,6 +241,45 @@ function clampDecimal(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function describeScanState(
+  categories: CategoryDrift[],
+  driftingCategories: CategoryDrift[]
+): { state: ScanState; title: string; message: string } {
+  if (categories.length === 0) {
+    return {
+      state: "not_enough_data",
+      title: "More history needed",
+      message: "Drift needs at least two spending months with overlapping categories to compare old normal against recent normal."
+    };
+  }
+
+  if (driftingCategories.length > 0) {
+    return {
+      state: "drift_detected",
+      title: "Overspending found",
+      message: "Drift found categories where recent spending increased above the old normal."
+    };
+  }
+
+  const hasContraction = categories.some(
+    (category) => category.recentMonthlyCents < category.baselineMonthlyCents
+  );
+
+  if (hasContraction) {
+    return {
+      state: "contraction",
+      title: "No overspending found",
+      message: "Spending decreased in this window. Drift did not find lifestyle inflation in the returned Plaid history."
+    };
+  }
+
+  return {
+    state: "stable",
+    title: "Everything looks steady",
+    message: "Spending stayed close to your old normal in this window. A 0 Drift Score means there is no overspend to explain."
+  };
+}
+
 function chooseWindowSizes(transactions: DriftTransaction[]): {
   baselineMonths: number;
   recentMonths: number;
@@ -240,13 +287,6 @@ function chooseWindowSizes(transactions: DriftTransaction[]): {
   const monthCount = new Set(
     transactions.map((transaction) => transaction.transactionDate.slice(0, 7))
   ).size;
-
-  if (monthCount >= DEFAULT_WINDOW_MONTHS * 2) {
-    return {
-      baselineMonths: DEFAULT_WINDOW_MONTHS,
-      recentMonths: DEFAULT_WINDOW_MONTHS
-    };
-  }
 
   if (monthCount >= 2) {
     const windowMonths = Math.max(1, Math.floor(monthCount / 2));

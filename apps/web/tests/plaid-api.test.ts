@@ -42,6 +42,25 @@ describe("normalizePlaidTransactions", () => {
 
     expect(transactions).toEqual([]);
   });
+
+  it("uses Plaid merchant text when custom sandbox transactions are not enriched yet", () => {
+    const transactions = normalizePlaidTransactions([
+      {
+        transaction_id: "txn-3",
+        date: "2026-03-16",
+        name: "Sweetgreen Restaurant",
+        amount: 145
+      },
+      {
+        transaction_id: "txn-4",
+        date: "2026-03-17",
+        name: "Uber Trip",
+        amount: 118
+      }
+    ]);
+
+    expect(transactions.map((transaction) => transaction.category)).toEqual(["Dining", "Rides"]);
+  });
 });
 
 describe("hashPlaidTransactionId", () => {
@@ -54,10 +73,10 @@ describe("hashPlaidTransactionId", () => {
 });
 
 describe("preparePlaidTransactionsForScan", () => {
-  it("keeps real Plaid history when there are enough months to scan", () => {
-    const transactions = Array.from({ length: 6 }, (_, index) => ({
+  it("keeps real Plaid history when there are at least two months to compare", () => {
+    const transactions = Array.from({ length: 2 }, (_, index) => ({
       id: `txn-${index}`,
-      transactionDate: `2026-0${index + 1}-15`,
+      transactionDate: `2026-0${index + 3}-15`,
       merchantName: "Bar Luce",
       amountCents: 4000,
       category: "Dining",
@@ -71,7 +90,7 @@ describe("preparePlaidTransactionsForScan", () => {
     expect(prepared.hasEnoughHistory).toBe(true);
   });
 
-  it("keeps short Plaid history real and explains why Drift cannot scan it yet", () => {
+  it("keeps one-month Plaid history real and explains why Drift cannot scan it yet", () => {
     const prepared = preparePlaidTransactionsForScan([
       {
         id: "txn-1",
@@ -95,7 +114,7 @@ describe("preparePlaidTransactionsForScan", () => {
 
     expect(prepared.hasEnoughHistory).toBe(false);
     expect(new Set(prepared.transactions.map((transaction) => transaction.transactionDate.slice(0, 7))).size).toBe(1);
-    expect(prepared.message).toMatch(/needs at least 6 months/i);
+    expect(prepared.message).toMatch(/needs at least 2 months/i);
     expect(prepared.transactions[0]).toMatchObject({
       merchantName: "Bar Luce",
       category: "Dining",
