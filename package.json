@@ -7,8 +7,12 @@
     "apps/*"
   ],
   "scripts": {
-    "test": "npm run test --workspace @drift/core",
-    "typecheck": "npm run typecheck --workspace @drift/core"
+    "test": "npm run test --workspace @drift/core && npm run test --workspace @drift/web",
+    "test:core": "npm run test --workspace @drift/core",
+    "test:web": "npm run test --workspace @drift/web",
+    "typecheck": "npm run typecheck --workspace @drift/core && npm run typecheck --workspace @drift/web",
+    "dev:web": "npm run dev --workspace @drift/web",
+    "build:web": "npm run build --workspace @drift/web"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
