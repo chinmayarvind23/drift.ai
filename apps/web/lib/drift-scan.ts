@@ -1,5 +1,6 @@
 import {
   analyzeDrift,
+  parseTransactionsCsv,
   projectCounterfactualWealth,
   type CategoryDrift,
   type DriftTransaction
@@ -17,16 +18,26 @@ export interface DriftScanCategory {
   barPercent: number;
 }
 
-export interface DemoDriftScan {
+export interface DriftScan {
   score: number;
   scoreLabel: string;
+  sourceLabel: string;
+  transactionCount: number;
   monthlyOverspendCents: number;
   monthlyOverspendLabel: string;
+  counterfactualCents: number;
   counterfactualLabel: string;
+  projectionScenario: ProjectionScenario;
+  projectionScenarioLabel: string;
   baselineWindowLabel: string;
   recentWindowLabel: string;
   topCategories: DriftScanCategory[];
   privacyItems: string[];
+}
+
+export interface ProjectionScenario {
+  years: number;
+  annualReturnRate: number;
 }
 
 const BASELINE_MONTHS = ["2025-07", "2025-08", "2025-09"];
@@ -39,8 +50,30 @@ const CATEGORY_MONTHLY_SPEND_CENTS = [
   { category: "Groceries", baseline: 42_000, recent: 42_000 }
 ] as const;
 
-export function buildDemoDriftScan(): DemoDriftScan {
-  const analysis = analyzeDrift(buildSeedTransactions(), {
+const DEFAULT_PROJECTION_SCENARIO: ProjectionScenario = {
+  years: 10,
+  annualReturnRate: 0.07
+};
+
+export function buildDemoDriftScan(
+  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO
+): DriftScan {
+  return buildDriftScan(buildSeedTransactions(), "Demo data", projectionScenario);
+}
+
+export function buildDriftScanFromCsv(
+  csv: string,
+  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO
+): DriftScan {
+  return buildDriftScan(parseTransactionsCsv(csv), "Imported CSV", projectionScenario);
+}
+
+export function buildDriftScan(
+  transactions: DriftTransaction[],
+  sourceLabel: string,
+  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO
+): DriftScan {
+  const analysis = analyzeDrift(transactions, {
     baselineMonths: BASELINE_MONTHS.length,
     recentMonths: RECENT_MONTHS.length
   });
@@ -53,16 +86,21 @@ export function buildDemoDriftScan(): DemoDriftScan {
   );
   const counterfactual = projectCounterfactualWealth({
     monthlyOverspendCents,
-    years: 10,
-    annualReturnRate: 0.07
+    years: projectionScenario.years,
+    annualReturnRate: projectionScenario.annualReturnRate
   });
 
   return {
     score: analysis.driftScore,
     scoreLabel: String(analysis.driftScore),
+    sourceLabel,
+    transactionCount: transactions.length,
     monthlyOverspendCents,
     monthlyOverspendLabel: formatCurrency(monthlyOverspendCents),
+    counterfactualCents: counterfactual.projectedValueCents,
     counterfactualLabel: formatCurrency(counterfactual.projectedValueCents),
+    projectionScenario,
+    projectionScenarioLabel: formatProjectionScenario(projectionScenario),
     baselineWindowLabel: formatMonthWindow(analysis.baselineMonths),
     recentWindowLabel: formatMonthWindow(analysis.recentMonths),
     topCategories: analysis.categories.map(toDriftScanCategory),
@@ -71,6 +109,13 @@ export function buildDemoDriftScan(): DemoDriftScan {
       "Only category summaries feed the scan.",
       "Cloud backup is off until the user opts in."
     ]
+  };
+}
+
+export function clampProjectionScenario(scenario: ProjectionScenario): ProjectionScenario {
+  return {
+    years: clampWholeNumber(scenario.years, 1, 40),
+    annualReturnRate: clampDecimal(scenario.annualReturnRate, 0, 0.15)
   };
 }
 
@@ -151,4 +196,26 @@ function formatCurrency(cents: number): string {
     currency: "USD",
     maximumFractionDigits: 0
   }).format(cents / 100);
+}
+
+function formatProjectionScenario(scenario: ProjectionScenario): string {
+  const ratePercent = Number((scenario.annualReturnRate * 100).toFixed(1));
+
+  return `${scenario.years} years at ${ratePercent}%`;
+}
+
+function clampWholeNumber(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+function clampDecimal(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+
+  return Math.min(max, Math.max(min, value));
 }

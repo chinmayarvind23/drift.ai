@@ -6,4 +6,8 @@ dist/
 build/
 coverage/
 .codex-temp/
+test-results/
+__pycache__/
+*.py[cod]
+*.egg-info/
 .DS_Store

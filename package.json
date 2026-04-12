@@ -8,9 +8,12 @@
   ],
   "scripts": {
     "test": "npm run test --workspace @drift/core && npm run test --workspace @drift/web",
+    "test:api": "python -m pytest apps/api",
     "test:core": "npm run test --workspace @drift/core",
     "test:web": "npm run test --workspace @drift/web",
+    "test:e2e": "npm run test:e2e --workspace @drift/web",
     "typecheck": "npm run typecheck --workspace @drift/core && npm run typecheck --workspace @drift/web",
+    "dev:api": "python -m uvicorn app.main:app --reload --port 8000 --app-dir apps/api",
     "dev:web": "npm run dev --workspace @drift/web",
     "build:web": "npm run build --workspace @drift/web"
   },
