@@ -1,0 +1,17 @@
+{
+  "name": "drift-ai",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspace @drift/core",
+    "typecheck": "npm run typecheck --workspace @drift/core"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}
