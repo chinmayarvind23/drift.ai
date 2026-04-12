@@ -1,18 +1,14 @@
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from app.core.settings import Settings, get_settings
-from app.schemas import (
-    HealthResponse,
-    PlaidLinkTokenRequest,
-    PlaidSyncRequest,
-    PlaidTokenExchangeRequest,
-    PlaidUnavailableResponse,
-    SyntheticUserSummary,
-)
-from app.services.plaid import PlaidNotConfiguredError, PlaidService
+from app.schemas import HealthResponse, SyntheticUserSummary
 from app.services.synthetic_data import SYNTHETIC_USERS
+from app.routes.audit import router as audit_router
+from app.routes.evidence import router as evidence_router
+from app.routes.insights import router as insights_router
+from app.routes.plaid import router as plaid_router
+from app.routes.settings import router as settings_router
 
 app = FastAPI(title="Drift API", version="0.1.0")
 
@@ -24,6 +20,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(audit_router)
+app.include_router(evidence_router)
+app.include_router(insights_router)
+app.include_router(plaid_router)
+app.include_router(settings_router)
+
 
 @app.get("/health", response_model=HealthResponse)
 def health(settings: Settings = Depends(get_settings)) -> HealthResponse:
@@ -33,47 +35,3 @@ def health(settings: Settings = Depends(get_settings)) -> HealthResponse:
 @app.get("/demo/users", response_model=list[SyntheticUserSummary])
 def demo_users() -> list[SyntheticUserSummary]:
     return SYNTHETIC_USERS
-
-
-@app.post("/plaid/link-token")
-async def create_link_token(
-    request: PlaidLinkTokenRequest,
-    settings: Settings = Depends(get_settings),
-):
-    plaid = PlaidService(settings)
-    try:
-        return await plaid.create_link_token(request.user_id)
-    except PlaidNotConfiguredError:
-        return plaid_unavailable()
-
-
-@app.post("/plaid/exchange-token")
-async def exchange_token(
-    request: PlaidTokenExchangeRequest,
-    settings: Settings = Depends(get_settings),
-):
-    plaid = PlaidService(settings)
-    try:
-        return await plaid.exchange_public_token(request.public_token)
-    except PlaidNotConfiguredError:
-        return plaid_unavailable()
-
-
-@app.post("/plaid/sync")
-async def sync_transactions(
-    request: PlaidSyncRequest,
-    settings: Settings = Depends(get_settings),
-):
-    plaid = PlaidService(settings)
-    try:
-        return await plaid.sync_transactions(request.access_token, request.cursor)
-    except PlaidNotConfiguredError:
-        return plaid_unavailable()
-
-
-def plaid_unavailable() -> JSONResponse:
-    payload = PlaidUnavailableResponse(
-        message="Set DRIFT_PLAID_CLIENT_ID and DRIFT_PLAID_SECRET to enable Plaid sandbox.",
-        required_env=["DRIFT_PLAID_CLIENT_ID", "DRIFT_PLAID_SECRET"],
-    )
-    return JSONResponse(status_code=503, content=payload.model_dump())

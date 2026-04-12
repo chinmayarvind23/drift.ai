@@ -1,4 +1,5 @@
 from typing import Any
+from datetime import date, timedelta
 
 import httpx
 
@@ -23,6 +24,9 @@ class PlaidService:
             "products": self.settings.plaid_products.split(","),
             "country_codes": self.settings.plaid_country_codes.split(","),
             "language": "en",
+            "transactions": {
+                "days_requested": self.settings.plaid_transactions_days_requested,
+            },
         }
         return await self._post("/link/token/create", payload)
 
@@ -37,6 +41,28 @@ class PlaidService:
             },
         )
 
+    async def create_sandbox_public_token(self) -> dict[str, Any]:
+        self._ensure_configured()
+        end_date = date.today()
+        start_date = end_date - timedelta(days=self.settings.plaid_transactions_days_requested)
+        return await self._post(
+            "/sandbox/public_token/create",
+            {
+                "client_id": self.settings.plaid_client_id,
+                "secret": self.settings.plaid_secret,
+                "institution_id": "ins_109508",
+                "initial_products": self.settings.plaid_products.split(","),
+                "options": {
+                    "override_username": "user_transactions_dynamic",
+                    "override_password": "pass_good",
+                    "transactions": {
+                        "start_date": start_date.isoformat(),
+                        "end_date": end_date.isoformat(),
+                    },
+                },
+            },
+        )
+
     async def sync_transactions(self, access_token: str, cursor: str | None = None) -> dict[str, Any]:
         self._ensure_configured()
         payload: dict[str, Any] = {
@@ -46,7 +72,37 @@ class PlaidService:
         }
         if cursor:
             payload["cursor"] = cursor
-        return await self._post("/transactions/sync", payload)
+        sync_response = await self._post("/transactions/sync", payload)
+
+        if cursor or sync_response.get("added"):
+            return sync_response
+
+        transactions_response = await self.get_transactions(access_token)
+        return {
+            **sync_response,
+            "added": transactions_response.get("transactions", []),
+            "modified": sync_response.get("modified", []),
+            "removed": sync_response.get("removed", []),
+        }
+
+    async def get_transactions(self, access_token: str) -> dict[str, Any]:
+        self._ensure_configured()
+        end_date = date.today()
+        start_date = end_date - timedelta(days=self.settings.plaid_transactions_days_requested)
+        return await self._post(
+            "/transactions/get",
+            {
+                "client_id": self.settings.plaid_client_id,
+                "secret": self.settings.plaid_secret,
+                "access_token": access_token,
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "options": {
+                    "count": 500,
+                    "offset": 0,
+                },
+            },
+        )
 
     async def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         async with httpx.AsyncClient(base_url=self.settings.plaid_base_url, timeout=20) as client:

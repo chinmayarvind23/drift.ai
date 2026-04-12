@@ -31,3 +31,9 @@ class PlaidUnavailableResponse(BaseModel):
     configured: bool = False
     message: str
     required_env: list[str]
+
+
+class PlaidStatusResponse(BaseModel):
+    configured: bool
+    mode: str
+    routes: list[str]

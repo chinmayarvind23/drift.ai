@@ -29,4 +29,18 @@ describe("projectCounterfactualWealth", () => {
       projectedGainCents: 0
     });
   });
+
+  it("separates saved principal from investment gain at zero return", () => {
+    expect(
+      projectCounterfactualWealth({
+        monthlyOverspendCents: 48_800,
+        years: 10,
+        annualReturnRate: 0
+      })
+    ).toMatchObject({
+      principalCents: 5_856_000,
+      projectedValueCents: 5_856_000,
+      projectedGainCents: 0
+    });
+  });
 });

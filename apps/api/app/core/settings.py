@@ -10,8 +10,13 @@ class Settings(BaseSettings):
     plaid_products: str = "transactions"
     plaid_country_codes: str = "US"
     plaid_client_name: str = "Drift"
+    plaid_transactions_days_requested: int = 730
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="DRIFT_")
+    model_config = SettingsConfigDict(
+        env_file=(".env", "apps/api/.env"),
+        env_prefix="DRIFT_",
+        extra="ignore",
+    )
 
     @property
     def plaid_base_url(self) -> str:

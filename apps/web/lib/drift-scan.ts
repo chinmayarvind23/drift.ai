@@ -10,6 +10,9 @@ type CategoryStateLabel = "Stable" | "Watch" | "High drift";
 
 export interface DriftScanCategory {
   category: string;
+  baselineMonthlyCents: number;
+  recentMonthlyCents: number;
+  monthlyOverspendCents: number;
   baselineLabel: string;
   recentLabel: string;
   monthlyOverspendLabel: string;
@@ -25,8 +28,10 @@ export interface DriftScan {
   transactionCount: number;
   monthlyOverspendCents: number;
   monthlyOverspendLabel: string;
-  counterfactualCents: number;
-  counterfactualLabel: string;
+  investmentGainCents: number;
+  investmentGainLabel: string;
+  redirectedSavingsCents: number;
+  redirectedSavingsLabel: string;
   projectionScenario: ProjectionScenario;
   projectionScenarioLabel: string;
   baselineWindowLabel: string;
@@ -42,6 +47,7 @@ export interface ProjectionScenario {
 
 const BASELINE_MONTHS = ["2025-07", "2025-08", "2025-09"];
 const RECENT_MONTHS = ["2026-01", "2026-02", "2026-03"];
+const DEFAULT_WINDOW_MONTHS = 3;
 
 const CATEGORY_MONTHLY_SPEND_CENTS = [
   { category: "Dining", baseline: 12_000, recent: 40_000 },
@@ -73,10 +79,8 @@ export function buildDriftScan(
   sourceLabel: string,
   projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO
 ): DriftScan {
-  const analysis = analyzeDrift(transactions, {
-    baselineMonths: BASELINE_MONTHS.length,
-    recentMonths: RECENT_MONTHS.length
-  });
+  const windowSizes = chooseWindowSizes(transactions);
+  const analysis = analyzeDrift(transactions, windowSizes);
   const driftingCategories = analysis.categories.filter(
     (category) => category.monthlyOverspendCents > 0
   );
@@ -97,8 +101,10 @@ export function buildDriftScan(
     transactionCount: transactions.length,
     monthlyOverspendCents,
     monthlyOverspendLabel: formatCurrency(monthlyOverspendCents),
-    counterfactualCents: counterfactual.projectedValueCents,
-    counterfactualLabel: formatCurrency(counterfactual.projectedValueCents),
+    investmentGainCents: counterfactual.projectedGainCents,
+    investmentGainLabel: formatCurrency(counterfactual.projectedGainCents),
+    redirectedSavingsCents: counterfactual.principalCents,
+    redirectedSavingsLabel: formatCurrency(counterfactual.principalCents),
     projectionScenario,
     projectionScenarioLabel: formatProjectionScenario(projectionScenario),
     baselineWindowLabel: formatMonthWindow(analysis.baselineMonths),
@@ -148,6 +154,9 @@ function buildTransaction(
 function toDriftScanCategory(category: CategoryDrift): DriftScanCategory {
   return {
     category: category.category,
+    baselineMonthlyCents: category.baselineMonthlyCents,
+    recentMonthlyCents: category.recentMonthlyCents,
+    monthlyOverspendCents: category.monthlyOverspendCents,
     baselineLabel: formatCurrency(category.baselineMonthlyCents),
     recentLabel: formatCurrency(category.recentMonthlyCents),
     monthlyOverspendLabel: formatCurrency(category.monthlyOverspendCents),
@@ -175,6 +184,10 @@ function formatMonthWindow(months: string[]): string {
 
   if (!startMonth || !endMonth) {
     return "Not enough data";
+  }
+
+  if (startMonth === endMonth) {
+    return formatMonth(startMonth);
   }
 
   return `${formatMonth(startMonth)} - ${formatMonth(endMonth)}`;
@@ -218,4 +231,34 @@ function clampDecimal(value: number, min: number, max: number): number {
   }
 
   return Math.min(max, Math.max(min, value));
+}
+
+function chooseWindowSizes(transactions: DriftTransaction[]): {
+  baselineMonths: number;
+  recentMonths: number;
+} {
+  const monthCount = new Set(
+    transactions.map((transaction) => transaction.transactionDate.slice(0, 7))
+  ).size;
+
+  if (monthCount >= DEFAULT_WINDOW_MONTHS * 2) {
+    return {
+      baselineMonths: DEFAULT_WINDOW_MONTHS,
+      recentMonths: DEFAULT_WINDOW_MONTHS
+    };
+  }
+
+  if (monthCount >= 2) {
+    const windowMonths = Math.max(1, Math.floor(monthCount / 2));
+
+    return {
+      baselineMonths: windowMonths,
+      recentMonths: windowMonths
+    };
+  }
+
+  return {
+    baselineMonths: DEFAULT_WINDOW_MONTHS,
+    recentMonths: DEFAULT_WINDOW_MONTHS
+  };
 }

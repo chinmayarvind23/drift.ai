@@ -13,7 +13,10 @@ describe("buildDemoDriftScan", () => {
 
     expect(scan.score).toBeGreaterThanOrEqual(70);
     expect(scan.monthlyOverspendLabel).toBe("$488");
-    expect(scan.counterfactualLabel).toBe("$84,465");
+    expect("counterfactualLabel" in scan).toBe(false);
+    expect("counterfactualCents" in scan).toBe(false);
+    expect(scan.investmentGainLabel).toBe("$25,905");
+    expect(scan.redirectedSavingsLabel).toBe("$58,560");
     expect(scan.topCategories[0]).toMatchObject({
       category: "Dining",
       monthlyOverspendLabel: "$280",
@@ -34,10 +37,16 @@ describe("buildDemoDriftScan", () => {
 
     const conservativeScan = buildDemoDriftScan(conservativeScenario);
     const ambitiousScan = buildDemoDriftScan(ambitiousScenario);
+    const zeroReturnScan = buildDemoDriftScan({
+      years: 10,
+      annualReturnRate: 0
+    });
 
     expect(conservativeScan.projectionScenarioLabel).toBe("5 years at 3%");
     expect(ambitiousScan.projectionScenarioLabel).toBe("20 years at 9%");
-    expect(ambitiousScan.counterfactualCents).toBeGreaterThan(conservativeScan.counterfactualCents);
+    expect(ambitiousScan.investmentGainCents).toBeGreaterThan(conservativeScan.investmentGainCents);
+    expect(zeroReturnScan.investmentGainCents).toBe(0);
+    expect(zeroReturnScan.investmentGainLabel).toBe("$0");
   });
 });
 
@@ -67,6 +76,38 @@ describe("synthetic users", () => {
 });
 
 describe("buildDriftScanFromCsv", () => {
+  it("uses a shorter old-normal and recent-normal window when Plaid history is short", () => {
+    const scan = buildDriftScan(
+      [
+        {
+          transactionDate: "2026-03-15",
+          merchantName: "Bar Luce",
+          amountCents: 4000,
+          category: "Dining",
+          sourceHash: "plaid-a",
+          source: "plaid"
+        },
+        {
+          transactionDate: "2026-04-15",
+          merchantName: "Bar Luce",
+          amountCents: 9000,
+          category: "Dining",
+          sourceHash: "plaid-b",
+          source: "plaid"
+        }
+      ],
+      "Plaid sandbox"
+    );
+
+    expect(scan.baselineWindowLabel).toBe("Mar 2026");
+    expect(scan.recentWindowLabel).toBe("Apr 2026");
+    expect(scan.monthlyOverspendLabel).toBe("$50");
+    expect(scan.topCategories[0]).toMatchObject({
+      category: "Dining",
+      monthlyOverspendLabel: "$50"
+    });
+  });
+
   it("builds a drift scan from uploaded CSV text", () => {
     const scan = buildDriftScanFromCsv(`date,merchant,amount,category
 2025-07-04,Bodega,-20,Dining
