@@ -10,9 +10,10 @@ export function AccountSyncCard() {
     behaviorInsights,
     interceptDecisions,
     projectionScenario,
+    restoreAccountBackup,
     scan
   } = useAuditWorkspace();
-  const [message, setMessage] = useState("Backup sync is off until you sign in and add Supabase keys.");
+  const [message, setMessage] = useState("Sign in to sync a summary backup.");
 
   async function syncAuditSummary() {
     setMessage("Syncing summary...");
@@ -40,15 +41,40 @@ export function AccountSyncCard() {
     setMessage("Summary synced. Raw transactions were not uploaded.");
   }
 
+  async function restoreAuditSummary() {
+    setMessage("Checking backup...");
+    const response = await fetch("/api/sync/audit", {
+      cache: "no-store"
+    });
+    const body = await response.json() as {
+      ok: boolean;
+      error?: string;
+      snapshot?: Parameters<typeof restoreAccountBackup>[0];
+    };
+
+    if (!body.ok || !body.snapshot) {
+      setMessage(body.error ?? "No backup is ready for this account.");
+      return;
+    }
+
+    restoreAccountBackup(body.snapshot);
+    setMessage("Backup restored. Raw transactions were not downloaded.");
+  }
+
   return (
     <div className="surface-card">
       <p className="text-sm font-semibold">Account backup</p>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
         Backup stores summaries, Pattern Lab notes, intercept decisions, and what-if settings. It does not upload raw transactions.
       </p>
-      <Button className="mt-4 h-10 rounded-[8px]" onClick={syncAuditSummary}>
-        Sync summary backup
-      </Button>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button className="h-10 rounded-[8px]" onClick={syncAuditSummary}>
+          Sync summary backup
+        </Button>
+        <Button className="h-10 rounded-[8px]" variant="outline" onClick={restoreAuditSummary}>
+          Restore backup
+        </Button>
+      </div>
       <p className="mt-3 text-sm text-muted-foreground">{message}</p>
     </div>
   );

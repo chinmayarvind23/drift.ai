@@ -29,6 +29,11 @@ export interface InterceptDecision extends SpendIntercept {
   decision: InterceptDecisionState;
 }
 
+export interface ReportInterceptSummary {
+  tagLabel: "Intentional" | "Dismissed";
+  summary: string;
+}
+
 export function buildSpendIntercept(
   scan: DriftScan,
   transaction: SimulatedTransaction,
@@ -72,6 +77,19 @@ export function decideIntercept(
   return {
     ...intercept,
     decision
+  };
+}
+
+export function buildReportInterceptSummary(decision: InterceptDecision): ReportInterceptSummary {
+  const tagLabel = decision.decision === "intentional" ? "Intentional" : "Dismissed";
+  const summary =
+    decision.decision === "intentional"
+      ? `${decision.merchantName} was treated as an intentional ${decision.category} purchase inside a repeat ${decision.category} pattern.`
+      : `${decision.merchantName} was dismissed from the ${decision.category} intercept review.`;
+
+  return {
+    tagLabel,
+    summary
   };
 }
 

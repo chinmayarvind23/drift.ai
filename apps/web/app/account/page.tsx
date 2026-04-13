@@ -1,11 +1,28 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AccountSyncCard } from "@/components/account-sync-card";
+import { AuthActionLink } from "@/components/auth-action-link";
 import { auth0, isAuth0Configured } from "@/lib/auth0";
 
-export default async function AccountPage() {
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+interface AccountPageProps {
+  searchParams?: Promise<{
+    auth?: string;
+  }>;
+}
+
+export default async function AccountPage({ searchParams }: AccountPageProps) {
+  const params = searchParams ? await searchParams : {};
   const configured = isAuth0Configured();
   const session = auth0 ? await auth0.getSession() : null;
+  const authNotice =
+    params.auth === "complete"
+      ? "Signed in. Your account sync is ready."
+      : params.auth === "expired"
+        ? "That sign-in screen expired. Start sign-in again from here."
+        : null;
 
   return (
     <section className="mx-auto max-w-4xl px-5 py-6 md:px-8 lg:py-8">
@@ -17,6 +34,11 @@ export default async function AccountPage() {
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           Sign in only when you want backup across devices. Drift keeps raw transaction rows out of account sync.
         </p>
+        {authNotice ? (
+          <div className="mt-4 rounded-[8px] border border-border bg-muted/35 px-4 py-3 text-sm text-foreground">
+            {authNotice}
+          </div>
+        ) : null}
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="surface-card">
@@ -30,13 +52,21 @@ export default async function AccountPage() {
             </p>
             <div className="mt-4 flex gap-2">
               {configured && !session ? (
-                <Button className="h-10 rounded-[8px]" asChild>
-                  <a href="/auth/login">Sign in</a>
-                </Button>
+                <>
+                  <Button className="h-10 rounded-[8px]" asChild>
+                    <AuthActionLink action="login">Sign in</AuthActionLink>
+                  </Button>
+                  <Button className="h-10 rounded-[8px]" variant="outline" asChild>
+                    <AuthActionLink action="signup">Sign up</AuthActionLink>
+                  </Button>
+                  <Button className="h-10 rounded-[8px]" variant="outline" asChild>
+                    <AuthActionLink action="google">Continue with Google</AuthActionLink>
+                  </Button>
+                </>
               ) : null}
               {configured && session ? (
                 <Button className="h-10 rounded-[8px]" variant="outline" asChild>
-                  <a href="/auth/logout">Sign out</a>
+                  <AuthActionLink action="logout">Sign out</AuthActionLink>
                 </Button>
               ) : null}
             </div>

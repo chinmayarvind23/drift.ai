@@ -4,7 +4,9 @@ import {
   buildDemoDriftScan,
   buildDriftScan,
   buildEmptyDriftScan,
+  buildDriftScanFromBackupSummary,
   buildDriftScanFromCsv,
+  clampProjectionScenario,
   type ProjectionScenario
 } from "../lib/drift-scan";
 
@@ -65,9 +67,69 @@ describe("buildDemoDriftScan", () => {
     expect(zeroReturnScan.investmentGainCents).toBe(0);
     expect(zeroReturnScan.investmentGainLabel).toBe("$0");
   });
+
+  it("allows annual return assumptions up to 20 percent", () => {
+    expect(
+      buildDemoDriftScan(
+        clampProjectionScenario({
+          years: 10,
+          annualReturnRate: 0.2
+        })
+      ).projectionScenarioLabel
+    ).toBe("10 years at 20%");
+
+    expect(
+      clampProjectionScenario({
+        years: 10,
+        annualReturnRate: 0.25
+      }).annualReturnRate
+    ).toBe(0.2);
+  });
 });
 
 describe("buildDriftScanFromCsv", () => {
+  it("restores dashboard-ready metrics from a summary backup without raw transactions", () => {
+    const scan = buildDriftScanFromBackupSummary(
+      {
+        score: 42,
+        monthlyOverspendCents: 8_000,
+        investmentGainCents: 2_700,
+        redirectedSavingsCents: 96_000,
+        topCategories: [
+          {
+            category: "Dining",
+            monthlyOverspendCents: 8_000,
+            baselineMonthlyCents: 12_000,
+            recentMonthlyCents: 20_000,
+            stateLabel: "High drift"
+          }
+        ],
+        newPatterns: [
+          {
+            category: "Education",
+            recentMonthlyCents: 6_000
+          }
+        ]
+      },
+      { years: 10, annualReturnRate: 0.07 }
+    );
+
+    expect(scan.sourceLabel).toBe("Restored backup");
+    expect(scan.transactionCount).toBe(0);
+    expect(scan.scoreLabel).toBe("42");
+    expect(scan.monthlyOverspendLabel).toBe("$80");
+    expect(scan.topCategories[0]).toMatchObject({
+      category: "Dining",
+      monthlyOverspendLabel: "$80",
+      driftPercentLabel: "67%"
+    });
+    expect(scan.newPatterns[0]).toMatchObject({
+      category: "Education",
+      reviewLabel: "New pattern, not Drift"
+    });
+    expect(scan.privacyItems.join(" ")).toMatch(/Raw transaction rows were not restored/);
+  });
+
   it("uses a shorter old-normal and recent-normal window when Plaid history is short", () => {
     const scan = buildDriftScan(
       [
@@ -238,6 +300,48 @@ describe("buildDriftScanFromCsv", () => {
     expect(scan.investmentGainLabel).toBe("$0");
     expect(scan.scanStateTitle).toBe("Everything looks steady");
   });
+
+  it.each([
+    {
+      fixture: "sample-drift.csv",
+      expectedScore: 65,
+      expectedOverspend: "$40",
+      expectedTopCategory: "Dining",
+      expectedNewPattern: undefined
+    },
+    {
+      fixture: "reward-dining-drift.csv",
+      expectedScore: 71,
+      expectedOverspend: "$80",
+      expectedTopCategory: "Dining",
+      expectedNewPattern: undefined
+    },
+    {
+      fixture: "multi-drift-stress.csv",
+      expectedScore: 73,
+      expectedOverspend: "$180",
+      expectedTopCategory: "Delivery",
+      expectedNewPattern: undefined
+    },
+    {
+      fixture: "new-pattern-education.csv",
+      expectedScore: 0,
+      expectedOverspend: "$0",
+      expectedTopCategory: "Dining",
+      expectedNewPattern: "Education"
+    }
+  ])(
+    "documents expected scan output for $fixture",
+    ({ fixture, expectedScore, expectedOverspend, expectedTopCategory, expectedNewPattern }) => {
+      const csv = readFileSync(new URL(`./fixtures/${fixture}`, import.meta.url), "utf8");
+      const scan = buildDriftScanFromCsv(csv);
+
+      expect(scan.score).toBe(expectedScore);
+      expect(scan.monthlyOverspendLabel).toBe(expectedOverspend);
+      expect(scan.topCategories[0]?.category).toBe(expectedTopCategory);
+      expect(scan.newPatterns[0]?.category).toBe(expectedNewPattern);
+    }
+  );
 
   it("adapts the scan window to the uploaded transaction duration", () => {
     const scan = buildDriftScan(

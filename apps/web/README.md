@@ -30,7 +30,7 @@ npm run test:e2e --workspace @drift/web
 3. Answer Pattern Lab.
 4. Run Intercept.
 5. Open Report and print/export.
-6. Open Account to test summary-only backup wiring.
+6. Open Account to sync or restore summary-only backup.
 
 ## Environment
 
@@ -40,6 +40,11 @@ Web-only keys:
 
 ```txt
 NEXT_PUBLIC_STRIPE_PAYMENT_LINK_URL=
+NEXT_PUBLIC_STRIPE_PAYMENT_LINK=
+STRIPE_SECRET_KEY=
+DRIFT_SCAN_PRICE_CENTS=100
+RESEND_API_KEY=
+DRIFT_REPORT_EMAIL_FROM=Drift <onboarding@resend.dev>
 
 AUTH0_SECRET=
 APP_BASE_URL=http://localhost:3000

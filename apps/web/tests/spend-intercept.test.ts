@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildDemoDriftScan } from "../lib/drift-scan";
 import { buildBehaviorInsight } from "../lib/behavior-insights";
-import { buildSpendIntercept, decideIntercept } from "../lib/spend-intercept";
+import { buildReportInterceptSummary, buildSpendIntercept, decideIntercept } from "../lib/spend-intercept";
 
 describe("spend intercept", () => {
   it("flags a simulated transaction in a high-drift category", () => {
@@ -43,5 +43,22 @@ describe("spend intercept", () => {
 
     expect(decision.decision).toBe("intentional");
     expect(decision.category).toBe("Groceries");
+  });
+
+  it("summarizes saved intercept decisions without action-button language", () => {
+    const intercept = buildSpendIntercept(
+      buildDemoDriftScan(),
+      {
+        merchantName: "Bar Luce",
+        amountCents: 7200,
+        category: "Dining"
+      },
+      {}
+    );
+    const summary = buildReportInterceptSummary(decideIntercept(intercept, "intentional"));
+
+    expect(summary.tagLabel).toBe("Intentional");
+    expect(summary.summary).toMatch(/repeat Dining pattern/i);
+    expect(summary.summary).not.toMatch(/mark .* intentional/i);
   });
 });

@@ -24,6 +24,8 @@ Drift stays narrow: it is not a general budget app. It connects or imports trans
 | AI depth | Local Hugging Face classification tags the behavior and shapes the recovery path from user context |
 | Focus | One workflow: "Where did my raise/new income disappear?" |
 
+Keep this framing in docs, pitch, and demo narration only. The product UI should read like a private audit tool, not like a judging checklist.
+
 ## Stack
 
 | Area | Choice | Notes |
@@ -106,12 +108,13 @@ drift.ai/
 - `/plan`: behavior-aware 30-day recovery plan.
 - `/intercept`: simulated new transaction intentionality check.
 - `/report`: paid-report surface with executive summary, top drift patterns, new patterns, AI behavior explanation, recovery path, intercept result, privacy note, export/print, signup, and Stripe payment link support.
-- `/account`: Auth0 sign-in and Supabase summary backup surface.
+- `/account`: Auth0 sign-in, Supabase summary backup, and summary restore surface.
+- `apps/mobile`: Expo starter with shared Drift logic and tested SLM resource planning for quantization, throttling, and context windows.
 
 ### Remaining After Web MVP
 
-- Deploy frontend to Vercel and FastAPI to a public host after live environment variables are provided.
-- Build mobile app after the web product flow is stable.
+- Deploy frontend to Vercel and FastAPI to a public host after Vercel CLI/project linking or another deploy target is available.
+- Build the full mobile app after the web product flow is stable. The starter exists, but iPhone Simulator testing requires macOS/Xcode.
 - Add full Stripe Checkout/webhook if payment link proof is not enough.
 
 ### 1. Mobile Shell and Privacy Status

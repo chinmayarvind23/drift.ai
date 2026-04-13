@@ -10,6 +10,7 @@
     "test": "npm run test --workspace @drift/core && npm run test --workspace @drift/web",
     "test:api": "python -m pytest apps/api",
     "test:core": "npm run test --workspace @drift/core",
+    "test:mobile": "npm run test --workspace @drift/mobile",
     "test:web": "npm run test --workspace @drift/web",
     "test:e2e": "npm run test:e2e --workspace @drift/web",
     "typecheck": "npm run typecheck --workspace @drift/core && npm run typecheck --workspace @drift/web",

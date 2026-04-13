@@ -1,6 +1,6 @@
 import type { BehaviorInsight } from "./behavior-insights";
 import type { DriftScan, ProjectionScenario } from "./drift-scan";
-import type { InterceptDecision } from "./spend-intercept";
+import type { InterceptDecision, InterceptDecisionState } from "./spend-intercept";
 
 export type LeadIntent = "report" | "early_access";
 
@@ -36,10 +36,39 @@ export interface AccountSyncPayload {
   projection_scenario: ProjectionScenario;
 }
 
+export type AccountBackupSnapshot = Omit<AccountSyncPayload, "user_id">;
+
+type RestoredBehaviorInsight = Omit<BehaviorInsight, "modelName" | "confidence">;
+
+type RestoredInterceptDecision = Pick<
+  InterceptDecision,
+  "id" | "category" | "decision" | "createdAt"
+>;
+
 export interface InterestLead {
   email: string;
   intent: LeadIntent;
   created_at: string;
+}
+
+export interface AccountStatus {
+  signedIn: boolean;
+  hasAccount: boolean;
+}
+
+export interface Auth0UserClaims {
+  sub?: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+}
+
+export interface AccountProfile {
+  user_id: string;
+  email: string | null;
+  name: string | null;
+  picture_url: string | null;
+  updated_at: string;
 }
 
 export function buildAccountSyncPayload(input: AccountSyncInput): AccountSyncPayload {
@@ -102,4 +131,61 @@ export function buildInterestLead(
     intent,
     created_at: createdAt
   };
+}
+
+export function buildAccountProfile(
+  user: Auth0UserClaims,
+  updatedAt = new Date().toISOString()
+): AccountProfile {
+  if (!user.sub) {
+    throw new Error("Auth0 user is missing a subject identifier.");
+  }
+
+  return {
+    user_id: user.sub,
+    email: user.email ?? null,
+    name: user.name ?? null,
+    picture_url: user.picture ?? null,
+    updated_at: updatedAt
+  };
+}
+
+export function canGenerateReport(status: AccountStatus): boolean {
+  return status.signedIn && status.hasAccount;
+}
+
+export function restoreBehaviorInsights(
+  insights: Record<string, RestoredBehaviorInsight>
+): Record<string, BehaviorInsight> {
+  return Object.fromEntries(
+    Object.entries(insights).map(([category, insight]) => [
+      category,
+      {
+        ...insight,
+        modelName: "restored-backup",
+        confidence: null
+      }
+    ])
+  );
+}
+
+export function restoreInterceptDecisions(
+  decisions: RestoredInterceptDecision[]
+): InterceptDecision[] {
+  return decisions.map((decision) => ({
+    id: decision.id,
+    merchantName: `${decision.category} intercept`,
+    amountCents: 0,
+    amountLabel: "$0",
+    category: decision.category,
+    driftPercentLabel: "Restored",
+    monthlyOverspendLabel: "Restored",
+    insightLabel: "Restored from backup",
+    flagged: true,
+    reason: `A ${decision.category} intercept decision was restored from account backup.`,
+    ahaMessage: "This restored decision keeps the report consistent across devices.",
+    nextMove: "Import or sync transactions on this device to review the original purchase.",
+    createdAt: decision.createdAt,
+    decision: decision.decision as InterceptDecisionState
+  }));
 }

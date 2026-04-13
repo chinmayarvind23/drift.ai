@@ -25,7 +25,13 @@ export function LeadCapture({
       },
       body: JSON.stringify({ email, intent })
     });
-    const body = await response.json() as { ok: boolean; error?: string; storage?: string; lead?: unknown };
+    const body = await response.json() as {
+      ok: boolean;
+      emailSent?: boolean;
+      error?: string;
+      storage?: string;
+      lead?: unknown;
+    };
 
     if (!body.ok) {
       setMessage(body.error ?? "Could not save this email.");
@@ -34,11 +40,11 @@ export function LeadCapture({
 
     if (body.storage === "local_only") {
       window.localStorage.setItem("drift.interestLead", JSON.stringify(body.lead));
-      setMessage("Saved locally. Add Supabase keys to collect this in the cloud.");
+      setMessage(body.emailSent ? "Email sent. Saved locally too." : "Saved locally.");
       return;
     }
 
-    setMessage("Saved. You are on the early list.");
+    setMessage(body.emailSent ? "Email sent." : "Saved to your account.");
     setEmail("");
   }
 

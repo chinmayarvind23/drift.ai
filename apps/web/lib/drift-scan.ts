@@ -58,6 +58,24 @@ export interface ProjectionScenario {
   annualReturnRate: number;
 }
 
+export interface BackupScanSummary {
+  score: number;
+  monthlyOverspendCents: number;
+  investmentGainCents: number;
+  redirectedSavingsCents: number;
+  topCategories: Array<{
+    category: string;
+    monthlyOverspendCents: number;
+    baselineMonthlyCents: number;
+    recentMonthlyCents: number;
+    stateLabel: string;
+  }>;
+  newPatterns: Array<{
+    category: string;
+    recentMonthlyCents: number;
+  }>;
+}
+
 const BASELINE_MONTHS = ["2025-07", "2025-08", "2025-09"];
 const RECENT_MONTHS = ["2026-01", "2026-02", "2026-03"];
 const DEFAULT_WINDOW_MONTHS = 3;
@@ -91,6 +109,71 @@ export function buildDriftScanFromCsv(
   projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO
 ): DriftScan {
   return buildDriftScan(parseTransactionsCsv(csv), "Imported CSV", projectionScenario);
+}
+
+export function buildDriftScanFromBackupSummary(
+  summary: BackupScanSummary,
+  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO
+): DriftScan {
+  const scanState =
+    summary.monthlyOverspendCents > 0
+      ? {
+          state: "drift_detected" as const,
+          title: "Overspending found",
+          message: "This restored backup shows categories where recent spending increased above the old normal."
+        }
+      : {
+          state: "stable" as const,
+          title: "Everything looks steady",
+          message: "This restored backup did not include active overspend."
+        };
+
+  return {
+    score: summary.score,
+    scoreLabel: String(summary.score),
+    sourceLabel: "Restored backup",
+    transactionCount: 0,
+    monthlyOverspendCents: summary.monthlyOverspendCents,
+    monthlyOverspendLabel: formatCurrency(summary.monthlyOverspendCents),
+    investmentGainCents: summary.investmentGainCents,
+    investmentGainLabel: formatCurrency(summary.investmentGainCents),
+    redirectedSavingsCents: summary.redirectedSavingsCents,
+    redirectedSavingsLabel: formatCurrency(summary.redirectedSavingsCents),
+    projectionScenario,
+    projectionScenarioLabel: formatProjectionScenario(projectionScenario),
+    baselineWindowLabel: "Restored summary",
+    recentWindowLabel: "Restored summary",
+    scanState: scanState.state,
+    scanStateTitle: scanState.title,
+    scanStateMessage: scanState.message,
+    topCategories: summary.topCategories.map((category) => ({
+      category: category.category,
+      baselineMonthlyCents: category.baselineMonthlyCents,
+      recentMonthlyCents: category.recentMonthlyCents,
+      monthlyOverspendCents: category.monthlyOverspendCents,
+      baselineLabel: formatCurrency(category.baselineMonthlyCents),
+      recentLabel: formatCurrency(category.recentMonthlyCents),
+      monthlyOverspendLabel: formatCurrency(category.monthlyOverspendCents),
+      driftPercentLabel: formatRestoredDriftPercent(category),
+      stateLabel: normalizeCategoryStateLabel(category.stateLabel),
+      barPercent: Math.min(
+        100,
+        Math.max(4, Math.round((category.monthlyOverspendCents / Math.max(1, summary.monthlyOverspendCents)) * 100))
+      )
+    })),
+    newPatterns: summary.newPatterns.map((pattern) => ({
+      category: pattern.category,
+      recentMonthlyCents: pattern.recentMonthlyCents,
+      recentMonthlyLabel: formatCurrency(pattern.recentMonthlyCents),
+      recentWindowLabel: "Restored summary",
+      reviewLabel: "New pattern, not Drift"
+    })),
+    privacyItems: [
+      "This restore loaded synced summaries, Pattern Lab notes, intercept decisions, and what-if settings.",
+      "Raw transaction rows were not restored because Drift does not upload them to account backup.",
+      "Import CSV or sync Plaid again to review individual evidence rows on this device."
+    ]
+  };
 }
 
 export function buildDriftScan(
@@ -138,7 +221,7 @@ export function buildDriftScan(
     privacyItems: [
       "Raw transactions stay local and encrypted in this browser.",
       "Pattern notes and intercept decisions stay local unless backup is enabled.",
-      "Cloud AI and backup are off until the user opts in."
+      "AI runs locally first; optional account backup syncs summaries, not raw rows."
     ]
   };
 }
@@ -201,7 +284,7 @@ function sumCategorySpend(
 export function clampProjectionScenario(scenario: ProjectionScenario): ProjectionScenario {
   return {
     years: clampWholeNumber(scenario.years, 1, 40),
-    annualReturnRate: clampDecimal(scenario.annualReturnRate, 0, 0.15)
+    annualReturnRate: clampDecimal(scenario.annualReturnRate, 0, 0.2)
   };
 }
 
@@ -299,6 +382,39 @@ function formatProjectionScenario(scenario: ProjectionScenario): string {
   const ratePercent = Number((scenario.annualReturnRate * 100).toFixed(1));
 
   return `${scenario.years} years at ${ratePercent}%`;
+}
+
+function formatRestoredDriftPercent(category: {
+  baselineMonthlyCents: number;
+  recentMonthlyCents: number;
+}): string {
+  if (category.baselineMonthlyCents <= 0) {
+    return "0%";
+  }
+
+  const driftPercent = Math.max(
+    0,
+    Math.round(
+      ((category.recentMonthlyCents - category.baselineMonthlyCents) /
+        category.baselineMonthlyCents) *
+        100
+    )
+  );
+
+  return `${driftPercent}%`;
+}
+
+function normalizeCategoryStateLabel(value: string): CategoryStateLabel {
+  if (
+    value === "Stable" ||
+    value === "Watch" ||
+    value === "High drift" ||
+    value === "No longer active"
+  ) {
+    return value;
+  }
+
+  return "Stable";
 }
 
 function clampWholeNumber(value: number, min: number, max: number): number {

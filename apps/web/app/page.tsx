@@ -16,7 +16,9 @@ export default function ScanPage() {
     scan,
     sourceMessage
   } = useAuditWorkspace();
-  const topDriftCategories = scan.topCategories.filter((category) => category.stateLabel !== "Stable");
+  const topDriftCategories = scan.topCategories.filter(
+    (category) => category.monthlyOverspendCents > 0
+  );
 
   return (
     <div className="mx-auto grid max-w-7xl gap-6 px-5 py-6 md:grid-cols-[1.05fr_0.95fr] md:px-8 lg:py-8">
@@ -132,7 +134,9 @@ export default function ScanPage() {
       </section>
 
       <aside className="space-y-6">
-        <PatternQuestion category={topDriftCategories[0]?.category ?? scan.topCategories[0]?.category ?? "Your top pattern"} />
+        {topDriftCategories[0] ? (
+          <PatternQuestion category={topDriftCategories[0].category} />
+        ) : null}
         <PrivacyStatus items={scan.privacyItems} />
         <SnapshotTiles transactionCount={scan.transactionCount} scenarioLabel={scan.projectionScenarioLabel} />
       </aside>

@@ -307,7 +307,12 @@ function calculateDriftScore(categories: CategoryDrift[]): number {
 
   const weightedSeverity = driftingCategories.reduce((total, category) => {
     const cappedDrift = Math.min(category.driftPercent, 120);
-    const severity = Math.round((cappedDrift / 120) * 85);
+    const percentSeverity = Math.round((cappedDrift / 120) * 60);
+    const amountSeverity = Math.min(
+      40,
+      Math.round((category.monthlyOverspendCents / 30_000) * 40)
+    );
+    const severity = percentSeverity + amountSeverity;
 
     return total + severity * category.monthlyOverspendCents;
   }, 0);

@@ -51,15 +51,15 @@ export default function SettingsPage() {
             </p>
           </div>
           <div className="surface-card">
-            <p className="font-semibold">Backup is off</p>
+            <p className="font-semibold">Backup sync</p>
             <p className="mt-2 leading-6 text-muted-foreground">
-              Auth0 and Supabase backup are not enabled yet. When added, backup should sync summaries and tags, not raw transactions.
+              Account backup is managed from the Account page. It syncs scan summaries, tags, intercept decisions, and what-if settings only.
             </p>
           </div>
           <div className="surface-card">
-            <p className="font-semibold">Cloud AI is off</p>
+            <p className="font-semibold">Local AI</p>
             <p className="mt-2 leading-6 text-muted-foreground">
-              Current insights use deterministic local classification. No raw transaction history is sent to an LLM.
+              Pattern Lab uses a local browser classifier, the report can use local Qwen through Ollama, and fallback rules keep everything working offline.
             </p>
           </div>
         </div>

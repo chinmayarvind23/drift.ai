@@ -56,4 +56,26 @@ describe("analyzeDrift", () => {
 
     expect(analysis.categories.some((category) => category.category === "Travel")).toBe(false);
   });
+
+  it("does not give the same score to small and large single-category overspend", () => {
+    const smallDrift = analyzeDrift([
+      transaction("2025-07", "Dining", 2_000),
+      transaction("2025-08", "Dining", 2_000),
+      transaction("2025-09", "Dining", 2_000),
+      transaction("2026-01", "Dining", 6_000),
+      transaction("2026-02", "Dining", 6_000),
+      transaction("2026-03", "Dining", 6_000)
+    ]);
+    const largerDrift = analyzeDrift([
+      transaction("2025-07", "Delivery", 2_000),
+      transaction("2025-08", "Delivery", 2_000),
+      transaction("2025-09", "Delivery", 2_000),
+      transaction("2026-01", "Delivery", 20_000),
+      transaction("2026-02", "Delivery", 20_000),
+      transaction("2026-03", "Delivery", 20_000)
+    ]);
+
+    expect(smallDrift.driftScore).toBeLessThan(largerDrift.driftScore);
+    expect(smallDrift.driftScore).toBeLessThan(85);
+  });
 });

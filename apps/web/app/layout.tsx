@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { headers } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { AuditWorkspaceProvider } from "@/components/audit-workspace";
 import { ThemeProvider } from "@/components/theme-provider";
+import { getInitialThemeFromCookie } from "@/lib/theme-cookie";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -43,15 +45,20 @@ const themeInitScript = `
 })();
 `;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const requestHeaders = await headers();
+  const initialTheme = getInitialThemeFromCookie(requestHeaders.get("cookie"));
+  const isInitiallyDark = initialTheme === "dark";
+
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased${isInitiallyDark ? " dark" : ""}`}
+      style={{ colorScheme: isInitiallyDark ? "dark" : "light" }}
       suppressHydrationWarning
     >
       <body className="min-h-full">

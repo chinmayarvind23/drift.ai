@@ -56,11 +56,12 @@ export function InfoHint({ href, text }: { href?: string; text: string }) {
       >
         <Info className="size-3.5" />
       </button>
-      <span className="pointer-events-none absolute right-0 top-7 z-20 hidden w-72 rounded-[8px] border border-border bg-popover p-3 text-left text-xs font-normal leading-5 text-popover-foreground shadow-lg group-hover:block group-focus-within:block">
+      <span className="pointer-events-auto absolute right-0 top-7 z-20 hidden w-72 rounded-[8px] border border-border bg-popover p-3 text-left text-xs font-normal leading-5 text-popover-foreground shadow-lg group-hover:block group-focus-within:block">
+        <span className="absolute -top-3 right-0 h-3 w-28" />
         {text}
         {href ? (
           <Link
-            className="pointer-events-auto mt-2 block font-semibold underline-offset-4 hover:underline"
+            className="mt-2 block font-semibold underline-offset-4 hover:underline"
             href={href}
           >
             Score guide

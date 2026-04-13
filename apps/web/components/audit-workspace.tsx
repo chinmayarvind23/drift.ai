@@ -11,6 +11,11 @@ import {
 } from "react";
 import { parseTransactionsCsv, type DriftTransaction } from "@drift/core";
 import {
+  restoreBehaviorInsights,
+  restoreInterceptDecisions,
+  type AccountBackupSnapshot
+} from "@/lib/account-sync";
+import {
   AUDIT_STATE_STORAGE_KEY,
   AUDIT_STORAGE_SECRET_KEY,
   decryptAuditState,
@@ -22,6 +27,7 @@ import {
 } from "@/lib/audit-persistence";
 import {
   buildDriftScan,
+  buildDriftScanFromBackupSummary,
   buildEmptyDriftScan,
   clampProjectionScenario,
   type DriftScan,
@@ -53,6 +59,7 @@ interface AuditWorkspaceContextValue {
     sourceLabel?: string,
     message?: string
   ) => void;
+  restoreAccountBackup: (snapshot: AccountBackupSnapshot) => void;
   behaviorInsights: Record<string, BehaviorInsight>;
   classifyBehaviorInsight: (category: string, answer: string) => Promise<BehaviorInsight>;
   clearLocalAuditState: () => void;
@@ -225,6 +232,22 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
     setScanFromTransactions(transactions, sourceLabel, projectionScenario, {});
   }
 
+  function restoreAccountBackup(snapshot: AccountBackupSnapshot) {
+    const restoredScenario = clampProjectionScenario(snapshot.projection_scenario);
+    setProjectionScenarioState(restoredScenario);
+    setActiveEvidence({
+      transactions: null,
+      sourceLabel: "Restored backup"
+    });
+    setTransactionEdits({});
+    setBehaviorInsights(restoreBehaviorInsights(snapshot.behavior_insights));
+    setInterceptDecisions(restoreInterceptDecisions(snapshot.intercept_decisions));
+    setLastSyncAt(new Date().toISOString());
+    setSourceMessage("Restored summary backup. Import or sync transactions on this device to review raw evidence rows.");
+    setImportError(null);
+    setScan(buildDriftScanFromBackupSummary(snapshot.scan_summary, restoredScenario));
+  }
+
   function setProjectionScenario(nextScenario: ProjectionScenario) {
     const clampedScenario = clampProjectionScenario(nextScenario);
     setProjectionScenarioState(clampedScenario);
@@ -332,6 +355,7 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
         lastSyncAt,
         loadCsvFile,
         loadPlaidTransactions,
+        restoreAccountBackup,
         projectionScenario,
         saveBehaviorInsight,
         saveInterceptDecision,

@@ -13,19 +13,19 @@ export default function InterceptPage() {
     saveInterceptDecision,
     scan
   } = useAuditWorkspace();
-  const topDriftCategory = useMemo(
-    () => scan.topCategories.find((category) => category.monthlyOverspendCents > 0),
+  const driftCategories = useMemo(
+    () => scan.topCategories.filter((item) => item.monthlyOverspendCents > 0),
     [scan.topCategories]
   );
-  const [merchantName, setMerchantName] = useState("Bar Luce");
-  const [amount, setAmount] = useState("72");
-  const [category, setCategory] = useState(topDriftCategory?.category ?? "Dining");
+  const [merchantName, setMerchantName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState("");
   const [intercept, setIntercept] = useState<SpendIntercept | null>(null);
 
   function simulateTransaction() {
     setIntercept(
       buildSpendIntercept(scan, {
-        merchantName,
+        merchantName: merchantName.trim(),
         amountCents: Math.round(Number(amount) * 100),
         category
       }, behaviorInsights)
@@ -56,24 +56,22 @@ export default function InterceptPage() {
         <div className="mt-6 grid gap-4">
           <label className="space-y-2">
             <span className="text-xs font-medium uppercase text-muted-foreground">Merchant</span>
-            <input className="field-control" value={merchantName} onChange={(event) => setMerchantName(event.target.value)} />
+            <input className="field-control" placeholder="Example: Bar Luce" value={merchantName} onChange={(event) => setMerchantName(event.target.value)} />
           </label>
           <label className="space-y-2">
             <span className="text-xs font-medium uppercase text-muted-foreground">Amount</span>
-            <input className="field-control" min={1} type="number" value={amount} onChange={(event) => setAmount(event.target.value)} />
+            <input className="field-control" min={1} placeholder="Example: 72" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} />
           </label>
           <label className="space-y-2">
             <span className="text-xs font-medium uppercase text-muted-foreground">Category</span>
             <select className="field-control" value={category} onChange={(event) => setCategory(event.target.value)}>
-              {scan.topCategories.filter((item) => item.monthlyOverspendCents > 0).map((item) => (
+              <option value="">Choose a category</option>
+              {driftCategories.map((item) => (
                 <option key={item.category} value={item.category}>{item.category}</option>
               ))}
-              {scan.topCategories.every((item) => item.monthlyOverspendCents === 0) ? (
-                <option value={category}>{category}</option>
-              ) : null}
             </select>
           </label>
-          <Button className="h-10 rounded-[8px]" onClick={simulateTransaction}>
+          <Button className="h-10 rounded-[8px]" disabled={!merchantName.trim() || !amount || !category} onClick={simulateTransaction}>
             Simulate transaction
           </Button>
         </div>

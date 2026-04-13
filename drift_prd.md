@@ -336,6 +336,13 @@ Drift should collapse that workflow into one paid Drift Scan:
 6. Save the tag and insight.
 7. Trigger a private local intercept when the pattern appears again.
 
+Pitch-only framing, not product UI:
+
+- Target user: a busy professional after a raise, move, new job, relationship change, or stressful season.
+- Before Drift: roughly 45 minutes exporting transactions, cleaning rows, grouping categories, and guessing what changed.
+- After Drift: roughly 3 minutes to import/sync, scan, tag the top pattern, and decide what to reset.
+- Proof of payment intent: a `$1-$5` private Drift Scan report/export.
+
 ## Demo Flow
 
 The demo should tell a story, not list features.

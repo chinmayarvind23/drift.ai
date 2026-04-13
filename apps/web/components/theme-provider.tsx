@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode
 } from "react";
+import { serializeThemeCookie } from "@/lib/theme-cookie";
 
 type Theme = "light" | "dark";
 
@@ -26,6 +27,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.style.colorScheme = theme;
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    document.cookie = serializeThemeCookie(theme);
   }, [theme]);
 
   const value = useMemo(

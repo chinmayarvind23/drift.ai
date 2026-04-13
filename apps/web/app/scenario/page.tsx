@@ -25,7 +25,7 @@ export default function ScenarioPage() {
           </label>
           <label className="space-y-2">
             <span className="text-xs font-medium uppercase text-muted-foreground">Annual return %</span>
-            <input className="field-control" min={0} max={15} step={0.5} type="number" value={Number((projectionScenario.annualReturnRate * 100).toFixed(1))} onChange={(event) => setProjectionScenario({ ...projectionScenario, annualReturnRate: Number(event.target.value) / 100 })} />
+            <input className="field-control" min={0} max={20} step={0.5} type="number" value={Number((projectionScenario.annualReturnRate * 100).toFixed(1))} onChange={(event) => setProjectionScenario({ ...projectionScenario, annualReturnRate: Number(event.target.value) / 100 })} />
           </label>
         </div>
         <div className="mt-6">

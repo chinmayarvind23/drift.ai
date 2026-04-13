@@ -35,6 +35,14 @@ test("starts with zero values until evidence is imported or synced", async ({ pa
   await expect(page.getByText("0 patterns flagged")).toBeVisible();
   await expect(page.getByText("Import at least two months of transaction history")).toBeVisible();
   await expect(page.getByText("$0 redirected from overspend")).toBeVisible();
+  await expect(page.getByText("Pattern question")).toHaveCount(0);
+});
+
+test("keeps Pattern Question hidden when only a new pattern is present", async ({ page }) => {
+  await importFixture(page, "new-pattern-education.csv");
+
+  await expect(page.getByRole("heading", { name: "New patterns to review" })).toBeVisible();
+  await expect(page.getByText("Pattern question")).toHaveCount(0);
 });
 
 test("opens Pattern Lab from the Add context prompt", async ({ page }) => {
@@ -163,10 +171,16 @@ test("saves a Pattern Lab behavior tag and includes it in the report", async ({ 
   await page.addInitScript(() => {
     (window as unknown as {
       __DRIFT_AI_CLASSIFIER__: () => Promise<{ labels: string[]; scores: number[] }>;
+      __DRIFT_FINANCIAL_CLASSIFIER__: () => Promise<Array<{ label: string; score: number }>>;
     }).__DRIFT_AI_CLASSIFIER__ = async () => ({
       labels: ["reward spending", "stress convenience", "habit creep"],
       scores: [0.91, 0.06, 0.03]
     });
+    (window as unknown as {
+      __DRIFT_FINANCIAL_CLASSIFIER__: () => Promise<Array<{ label: string; score: number }>>;
+    }).__DRIFT_FINANCIAL_CLASSIFIER__ = async () => [
+      { label: "negative", score: 0.88 }
+    ];
   });
   await importFixture(page, "sample-drift.csv");
 
@@ -188,13 +202,21 @@ test("saves a Pattern Lab behavior tag and includes it in the report", async ({ 
   await expect(page.getByRole("heading", { name: "Drift Scan report" })).toBeVisible();
   await expect(page.getByText("Dining · Intentional upgrade").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recovery path" })).toBeVisible();
-  await expect(page.getByText(/Get the printable private report/i)).toBeVisible();
+  await expect(page.getByText("Sign in to generate this report").first()).toBeVisible();
+  await expect(page.getByText("Financial AI review")).toBeVisible();
+  await expect(page.getByText("Financial pressure")).toBeVisible();
 });
 
 test("simulates and saves a spend intercept decision", async ({ page }) => {
   await importFixture(page, "sample-drift.csv");
 
   await page.getByRole("link", { name: "Intercept" }).click();
+  await expect(page.getByLabel("Merchant")).toHaveValue("");
+  await expect(page.getByLabel("Amount")).toHaveValue("");
+  await expect(page.getByLabel("Category")).toHaveValue("");
+  await page.getByLabel("Merchant").fill("Bar Luce");
+  await page.getByLabel("Amount").fill("72");
+  await page.getByLabel("Category").selectOption("Dining");
   await page.getByRole("button", { name: "Simulate transaction" }).click();
 
   await expect(page.getByText("Intentionality check", { exact: true })).toBeVisible();
@@ -205,7 +227,8 @@ test("simulates and saves a spend intercept decision", async ({ page }) => {
 
   await page.getByRole("link", { name: "Report" }).click();
   await expect(page.getByText(/This is not about the \$72/i)).toBeVisible();
-  await expect(page.getByText(/Answer Pattern Lab for Dining/i)).toBeVisible();
+  await expect(page.getByText(/intentional Dining purchase inside a repeat Dining pattern/i)).toBeVisible();
+  await expect(page.getByText(/Mark intentional/i)).toHaveCount(0);
 });
 
 test("persists local audit state across refresh and pages", async ({ page }) => {
@@ -275,11 +298,10 @@ test("keeps account and paid report surfaces product-native", async ({ page }) =
   await expect(page.getByRole("heading", { name: "New patterns to review" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "AI behavior explanation" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "30-day recovery path" })).toBeVisible();
-  await expect(page.getByText("Pay $1 to unlock report")).toBeVisible();
-  await expect(page.getByText("Unlock report export")).toBeVisible();
-  await page.getByLabel("Email address").fill("demo@example.com");
-  await page.getByRole("button", { name: "Send me my Drift report" }).click();
-  await expect(page.getByText(/Saved locally|Saved\. You are on/i)).toBeVisible();
+  await expect(page.getByText("Sign in to generate this report").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export PDF" })).toHaveCount(0);
+  await expect(page.getByText("Pay $1 to unlock report")).toHaveCount(0);
+  await expect(page.getByText("Unlock report export")).toHaveCount(0);
   await expect(page.getByText(/Privacy note: raw transactions stayed/i)).toBeVisible();
   await expect(page.getByRole("link", { name: "Proof" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Demo script" })).toHaveCount(0);
