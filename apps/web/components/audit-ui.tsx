@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { Check, Info, LockKeyhole, RefreshCcw, ShieldCheck, TrendingUp } from "lucide-react";
 import { DRIFT_CATEGORY_TAXONOMY } from "@/lib/evidence-review";
@@ -14,13 +15,15 @@ export function Metric({
   value,
   tone,
   explanation,
-  detail
+  detail,
+  learnHref
 }: {
   label: string;
   value: string;
   tone: "amber" | "emerald" | "rose";
   explanation: string;
   detail?: string;
+  learnHref?: string;
 }) {
   const toneClass = {
     amber:
@@ -35,7 +38,7 @@ export function Metric({
     <div className={`rounded-[8px] border p-4 ${toneClass}`}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium uppercase text-current/70">{label}</p>
-        <InfoHint text={explanation} />
+        <InfoHint href={learnHref} text={explanation} />
       </div>
       <p className="mt-3 text-3xl font-semibold">{value}</p>
       {detail ? <p className="mt-2 text-xs leading-5 text-current/70">{detail}</p> : null}
@@ -43,7 +46,7 @@ export function Metric({
   );
 }
 
-export function InfoHint({ text }: { text: string }) {
+export function InfoHint({ href, text }: { href?: string; text: string }) {
   return (
     <span className="group relative inline-flex">
       <button
@@ -55,6 +58,14 @@ export function InfoHint({ text }: { text: string }) {
       </button>
       <span className="pointer-events-none absolute right-0 top-7 z-20 hidden w-72 rounded-[8px] border border-border bg-popover p-3 text-left text-xs font-normal leading-5 text-popover-foreground shadow-lg group-hover:block group-focus-within:block">
         {text}
+        {href ? (
+          <Link
+            className="pointer-events-auto mt-2 block font-semibold underline-offset-4 hover:underline"
+            href={href}
+          >
+            Score guide
+          </Link>
+        ) : null}
       </span>
     </span>
   );
@@ -66,7 +77,12 @@ export function CategoryRow({ category }: { category: DriftScanCategory }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-semibold">{category.category}</h3>
+            <Link
+              className="text-base font-semibold underline-offset-4 hover:underline"
+              href={`/category/${encodeURIComponent(category.category)}`}
+            >
+              {category.category}
+            </Link>
             <Badge className={`${stateClass(category.stateLabel)} rounded-[8px]`}>
               {category.stateLabel}
             </Badge>
@@ -95,7 +111,7 @@ export function EvidenceRow({
   onEdit: (sourceHash: string, edit: TransactionEdit) => void;
 }) {
   return (
-    <div className="grid gap-3 rounded-[8px] border border-border bg-background p-4 lg:grid-cols-[1fr_180px_1fr] lg:items-center">
+    <div data-testid="evidence-row" className="grid gap-3 rounded-[8px] border border-border bg-background p-4 lg:grid-cols-[1fr_180px_1fr] lg:items-center">
       <div>
         <p className="text-sm font-semibold">{transaction.merchantName}</p>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -147,7 +163,7 @@ export function StatusTile({ icon, label, value }: { icon: ReactNode; label: str
   );
 }
 
-export function PatternQuestion() {
+export function PatternQuestion({ category = "Dining" }: { category?: string }) {
   return (
     <section className="overflow-hidden rounded-[8px] border border-border bg-zinc-950 text-white shadow-sm">
       <div className="relative h-56">
@@ -163,7 +179,7 @@ export function PatternQuestion() {
         <div className="absolute bottom-5 left-5 right-5">
           <p className="text-sm text-zinc-200">Pattern question</p>
           <h2 className="mt-2 text-2xl font-semibold leading-tight">
-            Dining became part of the new normal. What changed around then?
+            {category} became part of the new normal. What changed around then?
           </h2>
         </div>
       </div>
@@ -171,8 +187,12 @@ export function PatternQuestion() {
         <p className="text-sm leading-6 text-zinc-300">
           A short answer turns a spending change into a private behavior note.
         </p>
-        <Button variant="secondary" className="mt-4 h-10 rounded-[8px] bg-white text-zinc-950 hover:bg-zinc-100">
-          Add context
+        <Button
+          variant="secondary"
+          className="mt-4 h-10 rounded-[8px] bg-white text-zinc-950 hover:bg-zinc-100"
+          asChild
+        >
+          <Link href="/insights">Add context</Link>
         </Button>
       </div>
     </section>
@@ -210,6 +230,7 @@ export function SnapshotTiles({ transactionCount, scenarioLabel }: { transaction
 function stateClass(state: DriftScanCategory["stateLabel"]): string {
   if (state === "High drift") return "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-400/30 dark:bg-rose-400/10 dark:text-rose-200";
   if (state === "Watch") return "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200";
+  if (state === "No longer active") return "border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200";
   return "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200";
 }
 

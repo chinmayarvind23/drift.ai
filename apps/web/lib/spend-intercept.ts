@@ -20,6 +20,8 @@ export interface SpendIntercept {
   insightLabel: string;
   flagged: boolean;
   reason: string;
+  ahaMessage: string;
+  nextMove: string;
   createdAt: string;
 }
 
@@ -37,14 +39,15 @@ export function buildSpendIntercept(
     (item) => item.category.toLowerCase() === transaction.category.toLowerCase()
   );
   const insight = insights[transaction.category];
-  const flagged = Boolean(category && category.stateLabel !== "Stable");
+  const flagged = Boolean(category && category.monthlyOverspendCents > 0);
   const id = `${createdAt}-${transaction.category}-${transaction.merchantName}`;
+  const amountLabel = formatCurrency(transaction.amountCents);
 
   return {
     id,
     merchantName: transaction.merchantName,
     amountCents: transaction.amountCents,
-    amountLabel: formatCurrency(transaction.amountCents),
+    amountLabel,
     category: transaction.category,
     driftPercentLabel: category?.driftPercentLabel ?? "0%",
     monthlyOverspendLabel: category?.monthlyOverspendLabel ?? "$0",
@@ -54,6 +57,10 @@ export function buildSpendIntercept(
       ? `${transaction.category} is already above your old normal, so this purchase gets an intentionality check.`
       : `${transaction.category} is not a current drift pattern, so Drift would not interrupt this purchase.`
     ,
+    ahaMessage: flagged
+      ? `This is not about the ${amountLabel}. It is about whether ${transaction.category} keeps becoming your new normal.`
+      : `This purchase does not match a current drift pattern.`,
+    nextMove: buildNextMove(transaction.category, insight?.tagLabel),
     createdAt
   };
 }
@@ -74,4 +81,28 @@ function formatCurrency(cents: number): string {
     currency: "USD",
     maximumFractionDigits: 0
   }).format(cents / 100);
+}
+
+function buildNextMove(category: string, tagLabel?: string): string {
+  if (tagLabel === "Reward spending") {
+    return `If this is the planned reward, mark it intentional. If not, move it to the next planned reward slot.`;
+  }
+
+  if (tagLabel === "Stress convenience") {
+    return `If stress is driving this, use the default fallback before buying.`;
+  }
+
+  if (tagLabel === "Social pressure") {
+    return `If this came from an invite, choose the boundary before replying.`;
+  }
+
+  if (tagLabel === "Habit creep") {
+    return `If this feels automatic, pause and use the weekly ${category} cap.`;
+  }
+
+  if (tagLabel === "Intentional upgrade") {
+    return `If this is part of the accepted upgrade, mark it intentional and keep the cap visible.`;
+  }
+
+  return `Answer Pattern Lab for ${category} to make the intercept more personal.`;
 }

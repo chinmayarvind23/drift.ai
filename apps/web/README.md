@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Drift Web MVP
 
-## Getting Started
+Next.js web app for the Drift Scan demo and paid report flow.
 
-First, run the development server:
+## Run Locally
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```powershell
+npm install
+npm run dev:api
+npm run dev:web
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000` or the port printed by Next.js.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Test
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```powershell
+npm test
+npm run test:api
+npm run typecheck
+npm run lint --workspace @drift/web
+npm run build:web
+npm run test:e2e --workspace @drift/web
+```
 
-## Learn More
+## Demo Flow
 
-To learn more about Next.js, take a look at the following resources:
+1. Click Bank sync and sync Plaid sandbox transactions, or import `apps/web/tests/fixtures/sample-drift.csv`.
+2. Review Scan, Evidence, and Category detail.
+3. Answer Pattern Lab.
+4. Run Intercept.
+5. Open Report and print/export.
+6. Open Account to test summary-only backup wiring.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Environment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Plaid sandbox uses the FastAPI backend keys in `apps/api/.env`.
 
-## Deploy on Vercel
+Web-only keys:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```txt
+NEXT_PUBLIC_STRIPE_PAYMENT_LINK_URL=
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+AUTH0_SECRET=
+APP_BASE_URL=http://localhost:3000
+AUTH0_DOMAIN=
+AUTH0_CLIENT_ID=
+AUTH0_CLIENT_SECRET=
+
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+Run `supabase/schema.sql` in Supabase before enabling backup.
+
+## Privacy Contract
+
+Raw transaction rows are local browser data. Supabase sync sends only scan summaries, Pattern Lab notes, intercept decisions, and what-if settings.

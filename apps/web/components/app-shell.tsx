@@ -15,6 +15,9 @@ const NAV_ITEMS = [
   { href: "/plan", label: "Plan" },
   { href: "/scenario", label: "What-if" },
   { href: "/insights", label: "Pattern Lab" },
+  { href: "/intercept", label: "Intercept" },
+  { href: "/report", label: "Report" },
+  { href: "/account", label: "Account" },
   { href: "/connect", label: "Bank sync" },
   { href: "/settings", label: "Privacy" }
 ];

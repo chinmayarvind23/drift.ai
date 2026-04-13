@@ -33,7 +33,10 @@ describe("audit persistence", () => {
           category: "Education",
           note: "Conference meal."
         }
-      }
+      },
+      behaviorInsights: {},
+      interceptDecisions: [],
+      lastSyncAt: null
     };
 
     const restored = parsePersistedAuditState(serializeAuditState(state));
@@ -67,7 +70,10 @@ describe("audit persistence", () => {
         annualReturnRate: 0.07
       },
       transactions: staleTransactions,
-      transactionEdits: {}
+      transactionEdits: {},
+      behaviorInsights: {},
+      interceptDecisions: [],
+      lastSyncAt: null
     };
     const importedState: PersistedAuditState = {
       sourceLabel: "Imported CSV",
@@ -77,7 +83,10 @@ describe("audit persistence", () => {
         annualReturnRate: 0.07
       },
       transactions: staleTransactions,
-      transactionEdits: {}
+      transactionEdits: {},
+      behaviorInsights: {},
+      interceptDecisions: [],
+      lastSyncAt: null
     };
 
     expect(isRemovedSyntheticProfileState(staleState)).toBe(true);
@@ -102,7 +111,10 @@ describe("audit persistence", () => {
           source: "plaid"
         }
       ],
-      transactionEdits: {}
+      transactionEdits: {},
+      behaviorInsights: {},
+      interceptDecisions: [],
+      lastSyncAt: "2026-04-12T10:00:00.000Z"
     };
 
     const encrypted = await encryptAuditState(state, "test-secret");
@@ -111,5 +123,25 @@ describe("audit persistence", () => {
     expect(encrypted).not.toContain("Bar Luce");
     expect(encrypted).not.toContain("Plaid sandbox");
     expect(restored).toEqual(state);
+  });
+
+  it("restores older imported states with new local-memory defaults", () => {
+    const restored = parsePersistedAuditState(JSON.stringify({
+      version: 1,
+      state: {
+        sourceLabel: "Imported CSV",
+        sourceMessage: "Imported 12 transactions from sample-drift.csv.",
+        projectionScenario: {
+          years: 10,
+          annualReturnRate: 0.07
+        },
+        transactions: null,
+        transactionEdits: {}
+      }
+    }));
+
+    expect(restored?.behaviorInsights).toEqual({});
+    expect(restored?.interceptDecisions).toEqual([]);
+    expect(restored?.lastSyncAt).toBeNull();
   });
 });

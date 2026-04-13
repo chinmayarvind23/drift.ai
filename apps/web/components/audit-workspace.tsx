@@ -12,6 +12,7 @@ import {
 import { parseTransactionsCsv, type DriftTransaction } from "@drift/core";
 import {
   AUDIT_STATE_STORAGE_KEY,
+  AUDIT_STORAGE_SECRET_KEY,
   decryptAuditState,
   encryptAuditState,
   getOrCreateAuditStorageSecret,
@@ -20,12 +21,15 @@ import {
   serializeAuditState
 } from "@/lib/audit-persistence";
 import {
-  buildDemoDriftScan,
   buildDriftScan,
+  buildEmptyDriftScan,
   clampProjectionScenario,
   type DriftScan,
   type ProjectionScenario
 } from "@/lib/drift-scan";
+import { buildAiBehaviorInsight } from "@/lib/ai-behavior-insights";
+import type { BehaviorInsight } from "@/lib/behavior-insights";
+import type { InterceptDecision } from "@/lib/spend-intercept";
 import { applyTransactionEdits, type TransactionEdit } from "@/lib/transaction-edits";
 
 const DEFAULT_SCENARIO: ProjectionScenario = {
@@ -49,7 +53,14 @@ interface AuditWorkspaceContextValue {
     sourceLabel?: string,
     message?: string
   ) => void;
+  behaviorInsights: Record<string, BehaviorInsight>;
+  classifyBehaviorInsight: (category: string, answer: string) => Promise<BehaviorInsight>;
+  clearLocalAuditState: () => void;
+  interceptDecisions: InterceptDecision[];
+  lastSyncAt: string | null;
   projectionScenario: ProjectionScenario;
+  saveBehaviorInsight: (insight: BehaviorInsight) => void;
+  saveInterceptDecision: (decision: InterceptDecision) => void;
   scan: DriftScan;
   setProjectionScenario: (scenario: ProjectionScenario) => void;
   sourceMessage: string | null;
@@ -63,12 +74,15 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
     useState<ProjectionScenario>(DEFAULT_SCENARIO);
   const [activeEvidence, setActiveEvidence] = useState<ActiveEvidence>({
     transactions: null,
-    sourceLabel: "Demo data"
+    sourceLabel: "No data yet"
   });
   const [transactionEdits, setTransactionEdits] = useState<Record<string, TransactionEdit>>({});
-  const [scan, setScan] = useState<DriftScan>(() => buildDemoDriftScan(DEFAULT_SCENARIO));
+  const [scan, setScan] = useState<DriftScan>(() => buildEmptyDriftScan(DEFAULT_SCENARIO));
   const [importError, setImportError] = useState<string | null>(null);
   const [sourceMessage, setSourceMessage] = useState<string | null>(null);
+  const [behaviorInsights, setBehaviorInsights] = useState<Record<string, BehaviorInsight>>({});
+  const [interceptDecisions, setInterceptDecisions] = useState<InterceptDecision[]>([]);
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [hasRestored, setHasRestored] = useState(false);
 
   const editedTransactions = useMemo(
@@ -112,6 +126,9 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
       });
       setTransactionEdits(restored.transactionEdits);
       setSourceMessage(restored.sourceMessage);
+      setBehaviorInsights(restored.behaviorInsights);
+      setInterceptDecisions(restored.interceptDecisions);
+      setLastSyncAt(restored.lastSyncAt);
       setScanFromTransactions(
         restored.transactions,
         restored.sourceLabel,
@@ -139,7 +156,10 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
         sourceMessage,
         projectionScenario,
         transactions: activeEvidence.transactions,
-        transactionEdits
+        transactionEdits,
+        behaviorInsights,
+        interceptDecisions,
+        lastSyncAt
       };
       const storageSecret = getOrCreateAuditStorageSecret(window.localStorage);
       const serializedState =
@@ -153,7 +173,10 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
     void persistAuditState();
   }, [
     activeEvidence,
+    behaviorInsights,
     hasRestored,
+    interceptDecisions,
+    lastSyncAt,
     projectionScenario,
     sourceMessage,
     transactionEdits
@@ -171,6 +194,9 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
       const transactions = parseTransactionsCsv(csv);
       setActiveEvidence({ transactions, sourceLabel: "Imported CSV" });
       setTransactionEdits({});
+      setBehaviorInsights({});
+      setInterceptDecisions([]);
+      setLastSyncAt(new Date().toISOString());
       setSourceMessage(`Imported ${transactions.length} transactions from ${file.name}.`);
       setImportError(null);
       setScanFromTransactions(transactions, "Imported CSV", projectionScenario, {});
@@ -191,6 +217,9 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
       sourceLabel
     });
     setTransactionEdits({});
+    setBehaviorInsights({});
+    setInterceptDecisions([]);
+    setLastSyncAt(new Date().toISOString());
     setSourceMessage(message);
     setImportError(null);
     setScanFromTransactions(transactions, sourceLabel, projectionScenario, {});
@@ -208,13 +237,28 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
   }
 
   function applyEvidenceEdit(sourceHash: string, edit: TransactionEdit) {
-    const nextEdits = {
-      ...transactionEdits,
-      [sourceHash]: {
-        ...transactionEdits[sourceHash],
-        ...edit
-      }
+    const originalTransaction = activeEvidence.transactions?.find(
+      (transaction) => transaction.sourceHash === sourceHash
+    );
+    const nextEdit = {
+      ...transactionEdits[sourceHash],
+      ...edit
     };
+    const normalizedCategory = nextEdit.category?.trim();
+    const normalizedNote = nextEdit.note?.trim();
+    const isOriginalCategory =
+      !normalizedCategory ||
+      (originalTransaction ? normalizedCategory === originalTransaction.category : false);
+    const nextEdits = { ...transactionEdits };
+
+    if (isOriginalCategory && !normalizedNote) {
+      delete nextEdits[sourceHash];
+    } else {
+      nextEdits[sourceHash] = {
+        ...(isOriginalCategory ? {} : { category: normalizedCategory }),
+        ...(normalizedNote ? { note: normalizedNote } : {})
+      };
+    }
 
     setTransactionEdits(nextEdits);
     setScanFromTransactions(
@@ -225,6 +269,41 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  async function classifyBehaviorInsight(category: string, answer: string): Promise<BehaviorInsight> {
+    return buildAiBehaviorInsight(category, answer);
+  }
+
+  function saveBehaviorInsight(insight: BehaviorInsight) {
+    setBehaviorInsights((current) => ({
+      ...current,
+      [insight.category]: insight
+    }));
+  }
+
+  function saveInterceptDecision(decision: InterceptDecision) {
+    setInterceptDecisions((current) => [
+      decision,
+      ...current.filter((item) => item.id !== decision.id)
+    ]);
+  }
+
+  function clearLocalAuditState() {
+    window.localStorage.removeItem(AUDIT_STATE_STORAGE_KEY);
+    window.localStorage.removeItem(AUDIT_STORAGE_SECRET_KEY);
+    setProjectionScenarioState(DEFAULT_SCENARIO);
+    setActiveEvidence({
+      transactions: null,
+      sourceLabel: "No data yet"
+    });
+    setTransactionEdits({});
+    setBehaviorInsights({});
+    setInterceptDecisions([]);
+    setLastSyncAt(null);
+    setSourceMessage(null);
+    setImportError(null);
+    setScan(buildEmptyDriftScan(DEFAULT_SCENARIO));
+  }
+
   function setScanFromTransactions(
     transactions: DriftTransaction[] | null,
     sourceLabel: string,
@@ -232,7 +311,7 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
     edits: Record<string, TransactionEdit>
   ) {
     if (!transactions) {
-      setScan(buildDemoDriftScan(scenario));
+      setScan(buildEmptyDriftScan(scenario));
       return;
     }
 
@@ -244,11 +323,18 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
       value={{
         activeEvidence,
         applyEvidenceEdit,
+        behaviorInsights,
+        classifyBehaviorInsight,
+        clearLocalAuditState,
         editedTransactions,
         importError,
+        interceptDecisions,
+        lastSyncAt,
         loadCsvFile,
         loadPlaidTransactions,
         projectionScenario,
+        saveBehaviorInsight,
+        saveInterceptDecision,
         scan,
         setProjectionScenario,
         sourceMessage,

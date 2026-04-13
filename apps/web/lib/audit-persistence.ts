@@ -1,8 +1,11 @@
 import type { DriftTransaction } from "@drift/core";
 import type { ProjectionScenario } from "./drift-scan";
 import type { TransactionEdit } from "./transaction-edits";
+import type { BehaviorInsight } from "./behavior-insights";
+import type { InterceptDecision } from "./spend-intercept";
 
 export const AUDIT_STATE_STORAGE_KEY = "drift.audit.v1";
+export const AUDIT_STORAGE_SECRET_KEY = "drift.audit.local_key.v1";
 
 const AUDIT_STATE_VERSION = 1;
 const ENCRYPTED_AUDIT_STATE_VERSION = 2;
@@ -15,6 +18,9 @@ export interface PersistedAuditState {
   projectionScenario: ProjectionScenario;
   transactions: DriftTransaction[] | null;
   transactionEdits: Record<string, TransactionEdit>;
+  behaviorInsights: Record<string, BehaviorInsight>;
+  interceptDecisions: InterceptDecision[];
+  lastSyncAt: string | null;
 }
 
 const REMOVED_SYNTHETIC_SOURCE_LABELS = new Set([
@@ -49,10 +55,27 @@ export function parsePersistedAuditState(value: string | null): PersistedAuditSt
       return null;
     }
 
-    return parsed.state;
+    return normalizePersistedAuditState(parsed.state);
   } catch {
     return null;
   }
+}
+
+function normalizePersistedAuditState(state: Partial<PersistedAuditState>): PersistedAuditState | null {
+  if (!state.projectionScenario || !("transactions" in state) || !state.sourceLabel) {
+    return null;
+  }
+
+  return {
+    sourceLabel: state.sourceLabel,
+    sourceMessage: state.sourceMessage ?? null,
+    projectionScenario: state.projectionScenario,
+    transactions: state.transactions ?? null,
+    transactionEdits: state.transactionEdits ?? {},
+    behaviorInsights: state.behaviorInsights ?? {},
+    interceptDecisions: state.interceptDecisions ?? [],
+    lastSyncAt: state.lastSyncAt ?? null
+  };
 }
 
 export function isRemovedSyntheticProfileState(value: unknown): boolean {
@@ -129,15 +152,14 @@ export async function decryptAuditState(
 }
 
 export function getOrCreateAuditStorageSecret(storage: Storage): string {
-  const key = "drift.audit.local_key.v1";
-  const existingSecret = storage.getItem(key);
+  const existingSecret = storage.getItem(AUDIT_STORAGE_SECRET_KEY);
 
   if (existingSecret) {
     return existingSecret;
   }
 
   const secret = encodeBase64(crypto.getRandomValues(new Uint8Array(32)));
-  storage.setItem(key, secret);
+  storage.setItem(AUDIT_STORAGE_SECRET_KEY, secret);
 
   return secret;
 }

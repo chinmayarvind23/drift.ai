@@ -8,7 +8,7 @@ import { EvidenceRow } from "@/components/audit-ui";
 import { DRIFT_CATEGORY_TAXONOMY, filterEvidenceTransactions, paginateEvidenceTransactions } from "@/lib/evidence-review";
 
 export default function EvidencePage() {
-  const { applyEvidenceEdit, editedTransactions, transactionEdits } = useAuditWorkspace();
+  const { applyEvidenceEdit, editedTransactions, scan, transactionEdits } = useAuditWorkspace();
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -56,6 +56,27 @@ export default function EvidencePage() {
             <span className="text-xs font-medium uppercase text-muted-foreground">Search evidence</span>
             <input className="field-control" placeholder="Merchant, category, date, or note" value={search} onChange={(event) => updateSearch(event.target.value)} />
           </label>
+        </div>
+
+        <div className="mt-5 rounded-[8px] border border-border bg-background p-4">
+          <p className="text-sm font-semibold">Recalculated scan</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Category edits update the audit immediately. Categories with no old-normal baseline stay in evidence, but do not create drift until they have a comparable old normal.
+          </p>
+          <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div>
+              <dt className="text-xs font-medium uppercase text-muted-foreground">Drift Score</dt>
+              <dd className="mt-1 text-2xl font-semibold">{scan.scoreLabel}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase text-muted-foreground">Overspend</dt>
+              <dd className="mt-1 text-2xl font-semibold">{scan.monthlyOverspendLabel}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase text-muted-foreground">What-if growth</dt>
+              <dd className="mt-1 text-2xl font-semibold">{scan.investmentGainLabel}</dd>
+            </div>
+          </dl>
         </div>
 
         <div className="mt-5 space-y-3">

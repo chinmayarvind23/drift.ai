@@ -6,7 +6,7 @@ import {
   type DriftTransaction
 } from "@drift/core";
 
-type CategoryStateLabel = "Stable" | "Watch" | "High drift";
+type CategoryStateLabel = "Stable" | "Watch" | "High drift" | "No longer active";
 type ScanState = "not_enough_data" | "contraction" | "stable" | "drift_detected";
 
 export interface DriftScanCategory {
@@ -20,6 +20,14 @@ export interface DriftScanCategory {
   driftPercentLabel: string;
   stateLabel: CategoryStateLabel;
   barPercent: number;
+}
+
+export interface NewPattern {
+  category: string;
+  recentMonthlyCents: number;
+  recentMonthlyLabel: string;
+  recentWindowLabel: string;
+  reviewLabel: "New pattern, not Drift";
 }
 
 export interface DriftScan {
@@ -41,6 +49,7 @@ export interface DriftScan {
   scanStateTitle: string;
   scanStateMessage: string;
   topCategories: DriftScanCategory[];
+  newPatterns: NewPattern[];
   privacyItems: string[];
 }
 
@@ -71,6 +80,12 @@ export function buildDemoDriftScan(
   return buildDriftScan(buildSeedTransactions(), "Demo data", projectionScenario);
 }
 
+export function buildEmptyDriftScan(
+  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO
+): DriftScan {
+  return buildDriftScan([], "No data yet", projectionScenario);
+}
+
 export function buildDriftScanFromCsv(
   csv: string,
   projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO
@@ -85,6 +100,7 @@ export function buildDriftScan(
 ): DriftScan {
   const windowSizes = chooseWindowSizes(transactions);
   const analysis = analyzeDrift(transactions, windowSizes);
+  const newPatterns = buildNewPatterns(transactions, analysis.baselineMonths, analysis.recentMonths);
   const driftingCategories = analysis.categories.filter(
     (category) => category.monthlyOverspendCents > 0
   );
@@ -118,12 +134,68 @@ export function buildDriftScan(
     scanStateTitle: scanState.title,
     scanStateMessage: scanState.message,
     topCategories: analysis.categories.map(toDriftScanCategory),
+    newPatterns,
     privacyItems: [
-      "Raw transactions stay local in this demo flow.",
-      "Only category summaries feed the scan.",
-      "Cloud backup is off until the user opts in."
+      "Raw transactions stay local and encrypted in this browser.",
+      "Pattern notes and intercept decisions stay local unless backup is enabled.",
+      "Cloud AI and backup are off until the user opts in."
     ]
   };
+}
+
+function buildNewPatterns(
+  transactions: DriftTransaction[],
+  baselineMonths: string[],
+  recentMonths: string[]
+): NewPattern[] {
+  if (baselineMonths.length === 0 || recentMonths.length === 0) {
+    return [];
+  }
+
+  const categories = [...new Set(transactions.map((transaction) => transaction.category))].sort();
+
+  return categories
+    .map((category) => {
+      const baselineTotal = sumCategorySpend(transactions, category, baselineMonths);
+      const recentTotal = sumCategorySpend(transactions, category, recentMonths);
+
+      if (baselineTotal > 0 || recentTotal <= 0) {
+        return null;
+      }
+
+      const recentMonthlyCents = Math.round(recentTotal / recentMonths.length);
+
+      return {
+        category,
+        recentMonthlyCents,
+        recentMonthlyLabel: formatCurrency(recentMonthlyCents),
+        recentWindowLabel: formatMonthWindow(recentMonths),
+        reviewLabel: "New pattern, not Drift" as const
+      };
+    })
+    .filter((pattern): pattern is NewPattern => pattern !== null)
+    .sort((left, right) => {
+      if (right.recentMonthlyCents !== left.recentMonthlyCents) {
+        return right.recentMonthlyCents - left.recentMonthlyCents;
+      }
+
+      return left.category.localeCompare(right.category);
+    });
+}
+
+function sumCategorySpend(
+  transactions: DriftTransaction[],
+  category: string,
+  months: string[]
+): number {
+  const monthSet = new Set(months);
+
+  return transactions
+    .filter(
+      (transaction) =>
+        transaction.category === category && monthSet.has(transaction.transactionDate.slice(0, 7))
+    )
+    .reduce((total, transaction) => total + transaction.amountCents, 0);
 }
 
 export function clampProjectionScenario(scenario: ProjectionScenario): ProjectionScenario {
@@ -169,17 +241,21 @@ function toDriftScanCategory(category: CategoryDrift): DriftScanCategory {
     recentLabel: formatCurrency(category.recentMonthlyCents),
     monthlyOverspendLabel: formatCurrency(category.monthlyOverspendCents),
     driftPercentLabel: `${category.driftPercent}%`,
-    stateLabel: formatState(category.driftState),
+    stateLabel: formatState(category),
     barPercent: Math.min(100, Math.max(4, Math.round((category.driftPercent / 120) * 100)))
   };
 }
 
-function formatState(state: CategoryDrift["driftState"]): CategoryStateLabel {
-  if (state === "high_drift") {
+function formatState(category: CategoryDrift): CategoryStateLabel {
+  if (category.recentMonthlyCents === 0 && category.baselineMonthlyCents > 0) {
+    return "No longer active";
+  }
+
+  if (category.driftState === "high_drift") {
     return "High drift";
   }
 
-  if (state === "watch") {
+  if (category.driftState === "watch") {
     return "Watch";
   }
 

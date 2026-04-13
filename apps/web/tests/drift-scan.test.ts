@@ -3,9 +3,26 @@ import { readFileSync } from "node:fs";
 import {
   buildDemoDriftScan,
   buildDriftScan,
+  buildEmptyDriftScan,
   buildDriftScanFromCsv,
   type ProjectionScenario
 } from "../lib/drift-scan";
+
+describe("buildEmptyDriftScan", () => {
+  it("starts with zero values before evidence is imported or synced", () => {
+    const scan = buildEmptyDriftScan();
+
+    expect(scan.sourceLabel).toBe("No data yet");
+    expect(scan.transactionCount).toBe(0);
+    expect(scan.scoreLabel).toBe("0");
+    expect(scan.monthlyOverspendLabel).toBe("$0");
+    expect(scan.investmentGainLabel).toBe("$0");
+    expect(scan.redirectedSavingsLabel).toBe("$0");
+    expect(scan.topCategories).toEqual([]);
+    expect(scan.newPatterns).toEqual([]);
+    expect(scan.scanState).toBe("not_enough_data");
+  });
+});
 
 describe("buildDemoDriftScan", () => {
   it("builds a dashboard-ready drift scan from seeded transactions", () => {
@@ -22,7 +39,7 @@ describe("buildDemoDriftScan", () => {
       monthlyOverspendLabel: "$280",
       stateLabel: "High drift"
     });
-    expect(scan.privacyItems).toContain("Raw transactions stay local in this demo flow.");
+    expect(scan.privacyItems).toContain("Raw transactions stay local and encrypted in this browser.");
   });
 
   it("customizes the saved-and-invested scenario per person", () => {
@@ -110,6 +127,73 @@ describe("buildDriftScanFromCsv", () => {
     expect(scan.scanStateTitle).toBe("No overspending found");
     expect(scan.scanStateMessage).toMatch(/spending decreased/i);
     expect(scan.score).toBe(0);
+  });
+
+  it("labels categories with old spending and no recent spending as no longer active", () => {
+    const scan = buildDriftScan(
+      [
+        {
+          transactionDate: "2026-03-15",
+          merchantName: "Bodega",
+          amountCents: 2000,
+          category: "Delivery",
+          sourceHash: "delivery-old",
+          source: "csv"
+        },
+        {
+          transactionDate: "2026-04-15",
+          merchantName: "Market",
+          amountCents: 5000,
+          category: "Groceries",
+          sourceHash: "groceries-recent",
+          source: "csv"
+        }
+      ],
+      "Imported CSV"
+    );
+
+    expect(scan.topCategories.find((category) => category.category === "Delivery")).toMatchObject({
+      baselineLabel: "$20",
+      recentLabel: "$0",
+      monthlyOverspendLabel: "$0",
+      stateLabel: "No longer active"
+    });
+  });
+
+  it("surfaces categories with recent spending and no old baseline as new patterns to review", () => {
+    const scan = buildDriftScan(
+      [
+        {
+          transactionDate: "2026-03-15",
+          merchantName: "Market",
+          amountCents: 4000,
+          category: "Groceries",
+          sourceHash: "groceries-old",
+          source: "csv"
+        },
+        {
+          transactionDate: "2026-04-15",
+          merchantName: "Night Class",
+          amountCents: 6000,
+          category: "Education",
+          sourceHash: "education-recent",
+          source: "csv"
+        }
+      ],
+      "Imported CSV"
+    );
+
+    expect(scan.monthlyOverspendLabel).toBe("$0");
+    expect(scan.score).toBe(0);
+    expect(scan.newPatterns).toEqual([
+      {
+        category: "Education",
+        recentMonthlyCents: 6000,
+        recentMonthlyLabel: "$60",
+        recentWindowLabel: "Apr 2026",
+        reviewLabel: "New pattern, not Drift"
+      }
+    ]);
   });
 
   it("makes a zero drift score read as a healthy result instead of a failed scan", () => {

@@ -6,8 +6,8 @@ import { useAuditWorkspace } from "@/components/audit-workspace";
 import { buildRecoveryPlan } from "@/lib/recovery-plan";
 
 export default function PlanPage() {
-  const { scan } = useAuditWorkspace();
-  const plan = buildRecoveryPlan(scan);
+  const { behaviorInsights, scan } = useAuditWorkspace();
+  const plan = buildRecoveryPlan(scan, behaviorInsights);
 
   return (
     <section className="mx-auto grid max-w-7xl gap-6 px-5 py-6 md:grid-cols-[0.85fr_1.15fr] md:px-8 lg:py-8">
@@ -17,8 +17,7 @@ export default function PlanPage() {
         </Badge>
         <h1 className="mt-4 text-3xl font-semibold">Recovery plan</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Keep the parts of the new normal you actually want. Reset the repeated drift with
-          the least behavior change first.
+          Keep the parts of the new normal you actually want. Pattern Lab tags turn each reset into a behavior-specific next move.
         </p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-1">
           <div className="surface-card">
@@ -46,6 +45,9 @@ export default function PlanPage() {
                     <p className="mt-1 text-sm text-muted-foreground">
                       Old normal {step.oldNormalLabel}. Recent normal {step.currentMonthlyLabel}.
                     </p>
+                    <p className="mt-2 text-xs font-medium uppercase text-muted-foreground">
+                      {step.behaviorTagLabel}
+                    </p>
                   </div>
                 </div>
                 <div className="text-left sm:text-right">
@@ -55,13 +57,16 @@ export default function PlanPage() {
               </div>
               <div className="mt-5 flex items-start gap-3 border-t border-border pt-4 text-sm leading-6 text-muted-foreground">
                 <Target className="mt-0.5 size-4 shrink-0 text-foreground" />
-                <p>{step.prompt}</p>
+                <div>
+                  <p>{step.prompt}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{step.whyItHelps}</p>
+                </div>
               </div>
             </article>
           ))
         ) : (
           <div className="surface-panel text-sm leading-6 text-muted-foreground">
-            Load a profile or import at least six months of transactions to build a reset plan.
+            Import a CSV or sync Plaid transactions with overspending to build a reset plan.
           </div>
         )}
       </div>

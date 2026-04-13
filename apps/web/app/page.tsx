@@ -23,8 +23,8 @@ export default function ScanPage() {
       <section className="surface-panel">
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div>
-            <Badge className="mb-4 rounded-[8px] border-emerald-200 bg-emerald-50 text-emerald-800">
-              Scan complete
+            <Badge className="mb-4 rounded-[8px] border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200">
+              {scan.transactionCount > 0 ? "Scan complete" : "Waiting for evidence"}
             </Badge>
             <h1 className="max-w-2xl text-4xl font-semibold leading-[1.05] md:text-6xl">
               Where did the raise go?
@@ -55,6 +55,7 @@ export default function ScanPage() {
             value={scan.scoreLabel}
             tone={scan.scanState === "drift_detected" ? "amber" : "emerald"}
             explanation="This is the overall shift from your old spending normal to your recent spending normal. Bigger repeated increases count more than tiny changes. A 0 means no repeated overspend was found in this window."
+            learnHref="/methodology"
           />
           <Metric label="Overspend" value={scan.monthlyOverspendLabel} tone="rose" explanation="This is the extra amount showing up each month compared with your old baseline." />
           <Metric
@@ -102,10 +103,36 @@ export default function ScanPage() {
             </div>
           )}
         </div>
+
+        {scan.newPatterns.length > 0 ? (
+          <div className="mt-7 rounded-[8px] border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/30 dark:bg-amber-400/10">
+            <h2 className="text-lg font-semibold">New patterns to review</h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              These categories appeared in the recent window with no old baseline. They are worth reviewing, but they do not count toward Drift Score.
+            </p>
+            <div className="mt-4 space-y-3">
+              {scan.newPatterns.map((pattern) => (
+                <div className="rounded-[8px] border border-amber-200 bg-background p-4 text-sm dark:border-amber-400/30" key={pattern.category}>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-semibold">{pattern.category}</p>
+                      <p className="mt-1 text-muted-foreground">
+                        New in {pattern.recentWindowLabel} at {pattern.recentMonthlyLabel}/month.
+                      </p>
+                    </div>
+                    <Badge className="w-fit rounded-[8px] border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-100">
+                      {pattern.reviewLabel}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <aside className="space-y-6">
-        <PatternQuestion />
+        <PatternQuestion category={topDriftCategories[0]?.category ?? scan.topCategories[0]?.category ?? "Your top pattern"} />
         <PrivacyStatus items={scan.privacyItems} />
         <SnapshotTiles transactionCount={scan.transactionCount} scenarioLabel={scan.projectionScenarioLabel} />
       </aside>

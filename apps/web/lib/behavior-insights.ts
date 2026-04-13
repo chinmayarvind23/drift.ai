@@ -14,7 +14,19 @@ export interface BehaviorInsight {
   tagLabel: string;
   summary: string;
   createdAt: string;
+  modelProvider: "huggingface" | "deterministic";
+  modelName: string;
+  confidence: number | null;
 }
+
+export const BEHAVIOR_TAG_OPTIONS: Array<{ tag: Exclude<BehaviorTag, "unknown">; label: string }> = [
+  { tag: "reward_spending", label: "Reward spending" },
+  { tag: "stress_convenience", label: "Stress convenience" },
+  { tag: "social_pressure", label: "Social pressure" },
+  { tag: "habit_creep", label: "Habit creep" },
+  { tag: "life_event", label: "Life event" },
+  { tag: "intentional_upgrade", label: "Intentional upgrade" }
+];
 
 const TAG_LABELS: Record<BehaviorTag, string> = {
   reward_spending: "Reward spending",
@@ -56,10 +68,16 @@ const TAG_KEYWORDS: Array<{ tag: BehaviorTag; keywords: string[] }> = [
 export function buildBehaviorInsight(
   category: string,
   answer: string,
-  createdAt = new Date().toISOString()
+  createdAt = new Date().toISOString(),
+  classification?: {
+    tag: BehaviorTag;
+    confidence: number | null;
+    modelProvider: BehaviorInsight["modelProvider"];
+    modelName: string;
+  }
 ): BehaviorInsight {
   const trimmedAnswer = answer.trim();
-  const tag = classifyBehaviorAnswer(trimmedAnswer);
+  const tag = classification?.tag ?? classifyBehaviorAnswer(trimmedAnswer);
 
   return {
     category,
@@ -67,7 +85,10 @@ export function buildBehaviorInsight(
     tag,
     tagLabel: TAG_LABELS[tag],
     summary: summarizeBehavior(category, trimmedAnswer, tag),
-    createdAt
+    createdAt,
+    modelProvider: classification?.modelProvider ?? "deterministic",
+    modelName: classification?.modelName ?? "keyword-fallback",
+    confidence: classification?.confidence ?? null
   };
 }
 
@@ -91,4 +112,8 @@ function summarizeBehavior(category: string, answer: string, tag: BehaviorTag): 
   }
 
   return `${category} is tagged as ${TAG_LABELS[tag].toLowerCase()} because you said: "${answer}"`;
+}
+
+export function getBehaviorTagLabel(tag: BehaviorTag): string {
+  return TAG_LABELS[tag];
 }

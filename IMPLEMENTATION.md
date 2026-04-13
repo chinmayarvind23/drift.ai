@@ -1,7 +1,7 @@
 # Drift Implementation Plan
 
 **Source PRD:** `drift_prd.md`  
-**V1 goal:** Build a mobile-first Drift Scan that replaces the manual spreadsheet workflow of finding where lifestyle inflation happened after income or life changes.
+**V1 goal:** Build a web-first Drift Scan that replaces the manual spreadsheet workflow of finding where lifestyle inflation happened after income or life changes. Mobile remains the next product surface after the web MVP is complete.
 
 Drift stays narrow: it is not a general budget app. It connects or imports transactions, detects spending drift, explains the behavioral cause, shows counterfactual wealth impact, and creates a private local spend intercept for repeat patterns.
 
@@ -9,8 +9,8 @@ Drift stays narrow: it is not a general budget app. It connects or imports trans
 
 1. Counterfactual reasoning is core, not optional.
 2. Plaid is core, with CSV import as the reliable fallback.
-3. Mobile app, local encrypted storage, on-device AI, and opt-in backup/sync are part of the main product plan.
-4. The web app still helps with the demo, repo visibility, and admin/pitch polish, but the product promise is mobile/local-first.
+3. Local encrypted storage, local AI classification, and opt-in backup/sync are part of the web MVP.
+4. The mobile app follows after the web MVP and should reuse the same core logic.
 5. No raw transaction data should be sent to a cloud AI model.
 6. Drift produces audits, insights, and intercepts. It should not become an open-ended advice product.
 
@@ -20,8 +20,8 @@ Drift stays narrow: it is not a general budget app. It connects or imports trans
 | --- | --- |
 | Workflow replacement | Replaces manual transaction export, spreadsheet cleanup, category comparison, and behavior guessing |
 | $1 test | Sell a `$1-$5 Drift Scan` that produces a private lifestyle inflation report |
-| Working MVP | Demo Plaid sandbox or CSV import, local analysis, Drift Score, counterfactual card, insight, and intercept |
-| AI depth | On-device AI classifies behavior and writes the private insight from user context |
+| Working MVP | Demo Plaid sandbox or CSV import, local analysis, Drift Score, new-pattern review, counterfactual card, Pattern Lab, intercept, and paid report |
+| AI depth | Local Hugging Face classification tags the behavior and shapes the recovery path from user context |
 | Focus | One workflow: "Where did my raise/new income disappear?" |
 
 ## Stack
@@ -96,6 +96,23 @@ drift.ai/
 ```
 
 ## V1 Features
+
+### Web MVP Status
+
+- `/` Scan: CSV import, adaptive windows, Drift Score, overspend, what-if, healthy zero state, new patterns to review.
+- `/evidence`: searchable/paginated evidence review, category edits, private notes, recalculated scan.
+- `/category/[name]`: category timeline, transactions, behavior note, no-longer-active state.
+- `/insights`: Pattern Lab question, local Hugging Face behavior tag suggestion, editable tag, saved summary.
+- `/plan`: behavior-aware 30-day recovery plan.
+- `/intercept`: simulated new transaction intentionality check.
+- `/report`: paid-report surface with executive summary, top drift patterns, new patterns, AI behavior explanation, recovery path, intercept result, privacy note, export/print, signup, and Stripe payment link support.
+- `/account`: Auth0 sign-in and Supabase summary backup surface.
+
+### Remaining After Web MVP
+
+- Deploy frontend to Vercel and FastAPI to a public host after live environment variables are provided.
+- Build mobile app after the web product flow is stable.
+- Add full Stripe Checkout/webhook if payment link proof is not enough.
 
 ### 1. Mobile Shell and Privacy Status
 

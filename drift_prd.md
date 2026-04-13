@@ -1,7 +1,7 @@
 # Drift Product PRD
 
 **Version:** 0.2
-**Goal:** Build a demo-ready mobile-first app that replaces the manual "where did my money go after my income changed?" workflow with a private AI-powered Drift Scan.
+**Goal:** Build a demo-ready web-first app that replaces the manual "where did my money go after my income changed?" workflow with a private AI-powered Drift Scan. Mobile is the next phase after the web MVP proves the value.
 **Source reference:** `resources/drift_ai/drift_prd.md`
 
 ## One-Line Pitch
@@ -66,6 +66,17 @@ After setup, Drift gives the user a clear lifestyle inflation report:
 10. Drift tags the pattern and turns it into a short private insight.
 11. When a future transaction matches a risky drift category, Drift sends a private local alert.
 12. User marks the purchase as intentional, dismisses it, or reviews the impact.
+
+## Web MVP Screens Implemented
+
+- Scan dashboard with empty default state, CSV import, Plaid sandbox sync path, adaptive comparison windows, Drift Score, overspend, what-if value, healthy zero state, and new patterns to review.
+- Evidence review with search, filtering, pagination, category overrides, private notes, and immediate recalculation.
+- Category detail with monthly timeline, transactions, behavior note, and states for drift, stable, new, or no longer active.
+- Pattern Lab with local Hugging Face behavior classification, editable behavior tag, and saved summary.
+- Recovery plan that uses the behavior tag and answer to make the next step specific.
+- Spend intercept demo that flags repeat high-drift categories and lets the user mark intentional or dismiss.
+- Paid report with executive summary, top 3 drift patterns, new patterns, AI behavior explanation, 30-day recovery path, intercept result, privacy note, export/print, payment proof, and email capture.
+- Account page with Auth0 sign-in and Supabase summary backup when keys are configured.
 
 ## Feature Requirements
 
