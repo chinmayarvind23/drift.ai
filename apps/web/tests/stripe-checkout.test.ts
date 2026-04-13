@@ -7,9 +7,11 @@ describe("getStripeCheckoutConfig", () => {
       getStripeCheckoutConfig({
         STRIPE_SECRET_KEY: "sk_test_123",
         APP_BASE_URL: "http://localhost:3000",
-        DRIFT_SCAN_PRICE_CENTS: "100"
+        DRIFT_SCAN_PRICE_CENTS: "100",
+        DRIFT_STRIPE_MANAGED_PAYMENTS_ENABLED: "true"
       })
     ).toMatchObject({
+      managedPaymentsEnabled: true,
       secretKey: "sk_test_123",
       appBaseUrl: "http://localhost:3000",
       priceCents: 100
@@ -33,7 +35,8 @@ describe("buildStripeCheckoutBody", () => {
       {
         secretKey: "sk_test_123",
         appBaseUrl: "http://localhost:3000",
-        priceCents: 100
+        priceCents: 100,
+        managedPaymentsEnabled: true
       },
       { email: "maya@example.com" }
     );
@@ -43,5 +46,6 @@ describe("buildStripeCheckoutBody", () => {
     expect(body.get("success_url")).toBe("http://localhost:3000/report?payment=complete");
     expect(body.get("line_items[0][price_data][unit_amount]")).toBe("100");
     expect(body.get("line_items[0][price_data][product_data][name]")).toBe("Drift Scan report");
+    expect(body.get("managed_payments[enabled]")).toBe("true");
   });
 });

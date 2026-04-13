@@ -1,0 +1,9 @@
+.env
+.env.*
+apps/*/.env
+apps/*/.env.*
+node_modules
+apps/*/.next
+packages/*/dist
+.git
+.codex-temp

@@ -17,6 +17,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
   const params = searchParams ? await searchParams : {};
   const configured = isAuth0Configured();
   const session = auth0 ? await auth0.getSession() : null;
+  const googleAuthEnabled = process.env.NEXT_PUBLIC_AUTH0_GOOGLE_ENABLED === "true";
   const authNotice =
     params.auth === "complete"
       ? "Signed in. Your account sync is ready."
@@ -59,9 +60,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                   <Button className="h-10 rounded-[8px]" variant="outline" asChild>
                     <AuthActionLink action="signup">Sign up</AuthActionLink>
                   </Button>
-                  <Button className="h-10 rounded-[8px]" variant="outline" asChild>
-                    <AuthActionLink action="google">Continue with Google</AuthActionLink>
-                  </Button>
+                  {googleAuthEnabled ? (
+                    <Button className="h-10 rounded-[8px]" variant="outline" asChild>
+                      <AuthActionLink action="google">Continue with Google</AuthActionLink>
+                    </Button>
+                  ) : null}
                 </>
               ) : null}
               {configured && session ? (

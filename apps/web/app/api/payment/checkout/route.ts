@@ -23,7 +23,8 @@ export async function POST() {
     method: "POST",
     headers: {
       Authorization: `Bearer ${config.secretKey}`,
-      "Content-Type": "application/x-www-form-urlencoded"
+      "Content-Type": "application/x-www-form-urlencoded",
+      ...(config.managedPaymentsEnabled ? { "Stripe-Version": "2026-02-25.preview" } : {})
     },
     body: buildStripeCheckoutBody(config, {
       email: session?.user?.email ?? null

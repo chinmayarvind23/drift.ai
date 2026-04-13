@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -8,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuditWorkspace } from "@/components/audit-workspace";
 import { useTheme } from "@/components/theme-provider";
+import driftLogo from "@/figs/drift-ai.jpeg";
 
 const NAV_ITEMS = [
   { href: "/", label: "Scan" },
@@ -33,9 +35,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl flex-col gap-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-[8px] bg-primary text-sm font-semibold text-primary-foreground">
-                D
-              </div>
+              <Image
+                alt="Drift.ai"
+                className="size-9 rounded-[8px] border border-border object-cover"
+                height={36}
+                priority
+                src={driftLogo}
+                width={36}
+              />
               <div>
                 <p className="text-sm font-semibold">Drift</p>
                 <p className="text-xs text-muted-foreground">Private lifestyle audit</p>

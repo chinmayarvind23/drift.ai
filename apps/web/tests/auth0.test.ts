@@ -14,7 +14,7 @@ describe("getAuth0Config", () => {
         AUTH0_CLIENT_ID: "client-id",
         AUTH0_CLIENT_SECRET: "client-secret",
         AUTH0_DOMAIN: "example.us.auth0.com",
-        AUTH0_BASE_URL: "http://localhost:3000"
+        AUTH0_BASE_URL: "http://localhost:3000/"
       })
     ).toMatchObject({
       domain: "example.us.auth0.com",

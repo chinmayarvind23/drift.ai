@@ -1,4 +1,5 @@
 export interface StripeCheckoutConfig {
+  managedPaymentsEnabled: boolean;
   secretKey: string;
   priceCents: number;
   appBaseUrl: string;
@@ -20,6 +21,7 @@ export function getStripeCheckoutConfig(
   }
 
   return {
+    managedPaymentsEnabled: env.DRIFT_STRIPE_MANAGED_PAYMENTS_ENABLED === "true",
     secretKey,
     appBaseUrl,
     priceCents: Math.round(priceCents)
@@ -39,6 +41,10 @@ export function buildStripeCheckoutBody(
     "line_items[0][price_data][unit_amount]": String(config.priceCents),
     "line_items[0][price_data][product_data][name]": "Drift Scan report"
   });
+
+  if (config.managedPaymentsEnabled) {
+    body.set("managed_payments[enabled]", "true");
+  }
 
   if (input.email) {
     body.set("customer_email", input.email);

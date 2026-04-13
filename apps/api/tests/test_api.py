@@ -63,3 +63,15 @@ def test_health_reports_configured_plaid_when_keys_are_present():
 
     assert response.status_code == 200
     assert response.json()["plaid_configured"] is True
+
+
+def test_settings_normalizes_cors_origins():
+    settings = Settings(
+        _env_file=None,
+        allowed_origins="https://drift-ai-lime.vercel.app/, http://localhost:3000"
+    )
+
+    assert settings.cors_allowed_origins == [
+        "https://drift-ai-lime.vercel.app",
+        "http://localhost:3000",
+    ]

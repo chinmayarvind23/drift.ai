@@ -25,11 +25,15 @@ export function getAuth0Config(
 
   return {
     domain,
-    appBaseUrl: env.APP_BASE_URL ?? env.AUTH0_BASE_URL,
+    appBaseUrl: normalizeAppBaseUrl(env.APP_BASE_URL ?? env.AUTH0_BASE_URL),
     clientId: env.AUTH0_CLIENT_ID,
     clientSecret: env.AUTH0_CLIENT_SECRET,
     secret: env.AUTH0_SECRET
   };
+}
+
+function normalizeAppBaseUrl(value: string | undefined): string | undefined {
+  return value?.replace(/\/$/, "");
 }
 
 function resolveAuth0Domain(env: Record<string, string | undefined>): string | null {

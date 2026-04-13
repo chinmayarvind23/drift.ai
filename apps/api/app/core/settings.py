@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     plaid_country_codes: str = "US"
     plaid_client_name: str = "Drift"
     plaid_transactions_days_requested: int = 730
+    allowed_origins: str = (
+        "http://localhost:3000,"
+        "http://localhost:3001,"
+        "https://drift-ai-lime.vercel.app"
+    )
 
     model_config = SettingsConfigDict(
         env_file=(".env", "apps/api/.env"),
@@ -29,6 +34,14 @@ class Settings(BaseSettings):
     @property
     def plaid_is_configured(self) -> bool:
         return bool(self.plaid_client_id and self.plaid_secret)
+
+    @property
+    def cors_allowed_origins(self) -> list[str]:
+        return [
+            origin.strip().rstrip("/")
+            for origin in self.allowed_origins.split(",")
+            if origin.strip()
+        ]
 
 
 @lru_cache
