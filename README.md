@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/web/figs/drift-ai.jpeg" alt="Drift.ai logo" width="96" />
+  <img src="apps/web/figs/drift-ai.jpeg" alt="Drift.ai logo" width="260" />
 </p>
 
 <h1 align="center">Drift.ai</h1>
