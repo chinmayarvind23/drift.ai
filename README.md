@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://youtu.be/IvfGUKCkWuE?si=iAnS7_1s4fM2Eadb">Link to the demo</a>
+  <a href="https://youtu.be/QEKu5bMjGek?si=DJko5NJhkeIirzYU">Link to the demo</a>
 </p>
 
 Drift.ai is a private AI lifestyle drift audit. It replaces the manual workflow of downloading bank transactions, building a spreadsheet, comparing old spending to recent spending, guessing what changed, and writing a plan by hand.
