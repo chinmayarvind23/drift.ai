@@ -9,6 +9,7 @@ export interface LocalRecoveryInput {
   overspendLabel: string;
   behaviorTagLabel: string;
   userAnswer?: string;
+  followUpAnswer?: string;
 }
 
 export interface LocalRecoveryPath {
@@ -21,7 +22,7 @@ export function getLocalLlmConfig(
 ): LocalLlmConfig {
   return {
     enabled: env.NEXT_PUBLIC_DRIFT_LOCAL_LLM_ENABLED !== "false",
-    endpoint: env.NEXT_PUBLIC_OLLAMA_GENERATE_URL ?? "http://localhost:11434/api/generate",
+    endpoint: env.NEXT_PUBLIC_DRIFT_RECOVERY_AI_URL ?? "/api/ai/recovery",
     model: env.NEXT_PUBLIC_OLLAMA_MODEL ?? "qwen2.5:0.5b"
   };
 }
@@ -43,16 +44,8 @@ export async function buildLocalLlmRecoveryPath(
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: config.model,
-        stream: false,
-        prompt: [
-          "Write one concise, practical 30-day recovery step for a private spending drift report.",
-          "Avoid shame. Do not mention budgets. Use plain language.",
-          `Category: ${input.category}`,
-          `Monthly overspend: ${input.overspendLabel}`,
-          `Behavior tag: ${input.behaviorTagLabel}`,
-          `User context: ${input.userAnswer || "No user context saved."}`
-        ].join("\n")
+        ...input,
+        model: config.model
       })
     });
 
@@ -60,8 +53,8 @@ export async function buildLocalLlmRecoveryPath(
       return buildFallbackRecoveryPath(input);
     }
 
-    const body = (await response.json()) as { response?: string };
-    const text = body.response?.trim();
+    const body = (await response.json()) as { text?: string; response?: string };
+    const text = (body.text ?? body.response)?.trim();
 
     if (!text) {
       return buildFallbackRecoveryPath(input);

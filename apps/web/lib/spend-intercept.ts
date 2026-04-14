@@ -59,11 +59,11 @@ export function buildSpendIntercept(
     insightLabel: insight?.tagLabel ?? "No behavior tag yet",
     flagged,
     reason: flagged
-      ? `${transaction.category} is already above your old normal, so this purchase gets an intentionality check.`
-      : `${transaction.category} is not a current drift pattern, so Drift would not interrupt this purchase.`
+      ? `${transaction.category} is already running above your old average, so Drift asks whether this purchase is still worth keeping.`
+      : `${transaction.category} is not currently above your old average, so Drift would not interrupt this purchase.`
     ,
     ahaMessage: flagged
-      ? `This is not about the ${amountLabel}. It is about whether ${transaction.category} keeps becoming your new normal.`
+      ? `This is not about judging ${amountLabel}. It is about catching repeat spending before it quietly becomes routine.`
       : `This purchase does not match a current drift pattern.`,
     nextMove: buildNextMove(transaction.category, insight?.tagLabel),
     createdAt
@@ -84,8 +84,8 @@ export function buildReportInterceptSummary(decision: InterceptDecision): Report
   const tagLabel = decision.decision === "intentional" ? "Intentional" : "Dismissed";
   const summary =
     decision.decision === "intentional"
-      ? `${decision.merchantName} was treated as an intentional ${decision.category} purchase inside a repeat ${decision.category} pattern.`
-      : `${decision.merchantName} was dismissed from the ${decision.category} intercept review.`;
+      ? `${decision.merchantName} was marked as worth keeping, even though ${decision.category} is already running above your old average.`
+      : `${decision.merchantName} was marked as not part of the ${decision.category} pattern.`;
 
   return {
     tagLabel,

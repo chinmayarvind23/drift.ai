@@ -169,9 +169,9 @@ export function buildDriftScanFromBackupSummary(
       reviewLabel: "New pattern, not Drift"
     })),
     privacyItems: [
-      "This restore loaded synced summaries, Pattern Lab notes, intercept decisions, and what-if settings.",
+      "This restore loaded synced summaries, saved pattern notes, intercept choices, and what-if settings.",
       "Raw transaction rows were not restored because Drift does not upload them to account backup.",
-      "Import CSV or sync Plaid again to review individual evidence rows on this device."
+      "Import CSV or sync Plaid again to review individual transactions on this device."
     ]
   };
 }
@@ -220,7 +220,7 @@ export function buildDriftScan(
     newPatterns,
     privacyItems: [
       "Raw transactions stay local and encrypted in this browser.",
-      "Pattern notes and intercept decisions stay local unless backup is enabled.",
+      "Saved pattern notes and intercept choices stay local unless backup is enabled.",
       "AI runs locally first; optional account backup syncs summaries, not raw rows."
     ]
   };

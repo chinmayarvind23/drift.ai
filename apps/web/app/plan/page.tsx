@@ -3,6 +3,7 @@
 import { Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuditWorkspace } from "@/components/audit-workspace";
+import { PremiumFeatureGate } from "@/components/premium-feature-gate";
 import { buildRecoveryPlan } from "@/lib/recovery-plan";
 
 export default function PlanPage() {
@@ -17,8 +18,14 @@ export default function PlanPage() {
         </Badge>
         <h1 className="mt-4 text-3xl font-semibold">Recovery plan</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Keep the parts of the new normal you actually want. Pattern Lab tags turn each reset into a behavior-specific next move.
+          Keep the spending changes you actually value, and reset the repeat purchases you do not.
         </p>
+        <div className="mt-5 rounded-[8px] border border-border bg-background p-4 text-sm leading-6 text-muted-foreground">
+          <p className="font-semibold text-foreground">Where these insights come from</p>
+          <p className="mt-2">
+            The plan starts with categories where recent monthly spending is higher than your old average. The monthly target is 60% of that extra spend, so the reset is useful without assuming every dollar has to disappear.
+          </p>
+        </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-1">
           <div className="surface-card">
             <p className="text-xs font-medium uppercase text-muted-foreground">Monthly target</p>
@@ -31,7 +38,8 @@ export default function PlanPage() {
         </div>
       </div>
 
-      <div className="space-y-3">
+      <PremiumFeatureGate featureName="Recovery plans">
+        <div className="space-y-3">
         {plan.steps.length > 0 ? (
           plan.steps.map((step, index) => (
             <article key={step.category} className="surface-panel">
@@ -69,7 +77,8 @@ export default function PlanPage() {
             Import a CSV or sync Plaid transactions with overspending to build a reset plan.
           </div>
         )}
-      </div>
+        </div>
+      </PremiumFeatureGate>
     </section>
   );
 }

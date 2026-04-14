@@ -40,12 +40,12 @@ export default function CategoryDetailPage() {
           </div>
         ) : (
           <p className="mt-5 text-sm leading-6 text-muted-foreground">
-            This category is not present in the current scan. Import or sync evidence first.
+            This category is not present in the current scan. Import or sync transactions first.
           </p>
         )}
         {category ? (
           <p className="mt-4 rounded-[8px] border border-border bg-background p-3 text-xs leading-5 text-muted-foreground">
-            Monthly averages are calculated across the old-normal and recent-normal windows. The timeline below shows transaction totals in each month.
+            Monthly averages compare earlier months with recent months. The timeline below shows transaction totals in each month.
           </p>
         ) : null}
 

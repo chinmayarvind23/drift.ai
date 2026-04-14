@@ -180,7 +180,7 @@ export function PatternQuestion({ category = "Dining" }: { category?: string }) 
         <div className="absolute bottom-5 left-5 right-5">
           <p className="text-sm text-zinc-200">Pattern question</p>
           <h2 className="mt-2 text-2xl font-semibold leading-tight">
-            {category} became part of the new normal. What changed around then?
+            {category} started showing up more often. What changed around then?
           </h2>
         </div>
       </div>
@@ -222,7 +222,7 @@ export function PrivacyStatus({ items }: { items: string[] }) {
 export function SnapshotTiles({ transactionCount, scenarioLabel }: { transactionCount: number; scenarioLabel: string }) {
   return (
     <section className="grid gap-3 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
-      <StatusTile icon={<RefreshCcw className="size-4" />} label="Evidence" value={`${transactionCount} scanned`} />
+      <StatusTile icon={<RefreshCcw className="size-4" />} label="Transactions" value={`${transactionCount} scanned`} />
       <StatusTile icon={<TrendingUp className="size-4" />} label="Scenario" value={scenarioLabel} />
     </section>
   );

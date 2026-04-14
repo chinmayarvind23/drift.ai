@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { hashPlaidTransactionId, preparePlaidTransactionsForScan, normalizePlaidTransactions } from "../lib/plaid-api";
+import {
+  getApiBaseUrl,
+  hashPlaidTransactionId,
+  normalizePlaidTransactions,
+  preparePlaidTransactionsForScan
+} from "../lib/plaid-api";
 
 describe("normalizePlaidTransactions", () => {
   it("converts Plaid sync transactions into Drift transactions", () => {
@@ -120,5 +125,19 @@ describe("preparePlaidTransactionsForScan", () => {
       category: "Dining",
       source: "plaid"
     });
+  });
+});
+
+describe("getApiBaseUrl", () => {
+  it("uses same-origin Next API routes by default", () => {
+    expect(getApiBaseUrl(undefined, "drift-ai-lime.vercel.app")).toBe("/api");
+  });
+
+  it("does not let deployed browsers call localhost FastAPI", () => {
+    expect(getApiBaseUrl("http://localhost:8000", "drift-ai-lime.vercel.app")).toBe("/api");
+  });
+
+  it("keeps explicit local FastAPI during localhost development", () => {
+    expect(getApiBaseUrl("http://localhost:8000/", "localhost")).toBe("http://localhost:8000");
   });
 });

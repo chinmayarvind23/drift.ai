@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildStripeCheckoutBody, getStripeCheckoutConfig } from "../lib/stripe-checkout";
+import {
+  buildStripeCheckoutBody,
+  getStripeCheckoutConfig,
+  getStripeCheckoutMissingReasons
+} from "../lib/stripe-checkout";
 
 describe("getStripeCheckoutConfig", () => {
   it("uses the server Stripe key to enable Checkout without a payment link", () => {
@@ -26,6 +30,15 @@ describe("getStripeCheckoutConfig", () => {
         DRIFT_SCAN_PRICE_CENTS: "50"
       })
     ).toBeNull();
+  });
+});
+
+describe("getStripeCheckoutMissingReasons", () => {
+  it("explains missing checkout env vars", () => {
+    expect(getStripeCheckoutMissingReasons({})).toEqual([
+      "STRIPE_SECRET_KEY is missing.",
+      "APP_BASE_URL or AUTH0_BASE_URL is missing."
+    ]);
   });
 });
 

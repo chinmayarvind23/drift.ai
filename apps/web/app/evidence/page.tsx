@@ -34,9 +34,9 @@ export default function EvidencePage() {
       <div className="surface-panel">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold">Evidence review</h1>
+            <h1 className="text-3xl font-semibold">Transaction review</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Correct the evidence before trusting the audit. Local edits override imported or synced categories.
+              Fix categories and notes before trusting the scan. Local edits update every page immediately.
             </p>
           </div>
           <Badge className="w-fit rounded-[8px] border-border bg-background text-muted-foreground">
@@ -53,7 +53,7 @@ export default function EvidencePage() {
             </select>
           </label>
           <label className="space-y-2">
-            <span className="text-xs font-medium uppercase text-muted-foreground">Search evidence</span>
+            <span className="text-xs font-medium uppercase text-muted-foreground">Search transactions</span>
             <input className="field-control" placeholder="Merchant, category, date, or note" value={search} onChange={(event) => updateSearch(event.target.value)} />
           </label>
         </div>
@@ -61,7 +61,7 @@ export default function EvidencePage() {
         <div className="mt-5 rounded-[8px] border border-border bg-background p-4">
           <p className="text-sm font-semibold">Recalculated scan</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Category edits update the audit immediately. Categories with no old-normal baseline stay in evidence, but do not create drift until they have a comparable old normal.
+            Category edits update the scan immediately. Categories with no old spending history stay visible as new patterns to review, but they do not count toward Drift Score yet.
           </p>
           <dl className="mt-4 grid gap-3 sm:grid-cols-3">
             <div>
@@ -82,7 +82,7 @@ export default function EvidencePage() {
         <div className="mt-5 space-y-3">
           {evidencePage.items.length > 0 ? evidencePage.items.map((transaction) => <EvidenceRow key={transaction.sourceHash} transaction={transaction} onEdit={applyEvidenceEdit} />) : (
             <div className="surface-card text-sm leading-6 text-muted-foreground">
-              Import a CSV or sync Plaid on the Bank sync page to review evidence.
+              Import a CSV to review transactions.
             </div>
           )}
         </div>

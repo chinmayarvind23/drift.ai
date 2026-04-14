@@ -3,13 +3,16 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import type { LeadIntent } from "@/lib/account-sync";
+import type { ReportPdfInput } from "@/lib/report-pdf";
 
 export function LeadCapture({
   buttonLabel = "Send me my Drift report",
-  intent = "report"
+  intent = "report",
+  reportAttachment
 }: {
   buttonLabel?: string;
   intent?: LeadIntent;
+  reportAttachment?: ReportPdfInput;
 }) {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -23,11 +26,12 @@ export function LeadCapture({
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ email, intent })
+      body: JSON.stringify({ email, intent, report: reportAttachment })
     });
     const body = await response.json() as {
       ok: boolean;
       emailSent?: boolean;
+      emailError?: string;
       error?: string;
       storage?: string;
       lead?: unknown;
@@ -40,11 +44,19 @@ export function LeadCapture({
 
     if (body.storage === "local_only") {
       window.localStorage.setItem("drift.interestLead", JSON.stringify(body.lead));
-      setMessage(body.emailSent ? "Email sent. Saved locally too." : "Saved locally.");
+      setMessage(
+        body.emailSent
+          ? "Email sent. Saved locally too."
+          : `Saved locally. ${body.emailError ?? "Email is not configured yet."}`
+      );
       return;
     }
 
-    setMessage(body.emailSent ? "Email sent." : "Saved to your account.");
+    setMessage(
+      body.emailSent
+        ? "Email sent."
+        : `Saved to your account. ${body.emailError ?? "Email is not configured yet."}`
+    );
     setEmail("");
   }
 

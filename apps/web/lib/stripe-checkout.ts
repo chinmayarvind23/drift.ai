@@ -28,6 +28,27 @@ export function getStripeCheckoutConfig(
   };
 }
 
+export function getStripeCheckoutMissingReasons(
+  env: Record<string, string | undefined> = process.env
+): string[] {
+  const reasons: string[] = [];
+  const priceCents = Number(env.DRIFT_SCAN_PRICE_CENTS ?? "100");
+
+  if (!env.STRIPE_SECRET_KEY) {
+    reasons.push("STRIPE_SECRET_KEY is missing.");
+  }
+
+  if (!(env.APP_BASE_URL ?? env.AUTH0_BASE_URL)) {
+    reasons.push("APP_BASE_URL or AUTH0_BASE_URL is missing.");
+  }
+
+  if (!Number.isFinite(priceCents) || priceCents < 100) {
+    reasons.push("DRIFT_SCAN_PRICE_CENTS must be at least 100.");
+  }
+
+  return reasons;
+}
+
 export function buildStripeCheckoutBody(
   config: StripeCheckoutConfig,
   input: StripeCheckoutInput = {}

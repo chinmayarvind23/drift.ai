@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useAuditWorkspace } from "@/components/audit-workspace";
 import { CategoryRow, InfoHint, Metric, PatternQuestion, PrivacyStatus, SnapshotTiles } from "@/components/audit-ui";
+import { PremiumFeatureGate } from "@/components/premium-feature-gate";
 
 export default function ScanPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,14 +27,14 @@ export default function ScanPage() {
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div>
             <Badge className="mb-4 rounded-[8px] border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200">
-              {scan.transactionCount > 0 ? "Scan complete" : "Waiting for evidence"}
+              {scan.transactionCount > 0 ? "Scan complete" : "Waiting for transactions"}
             </Badge>
             <h1 className="max-w-2xl text-4xl font-semibold leading-[1.05] md:text-6xl">
-              Where did the raise go?
+              See where your spending quietly changed.
             </h1>
             <p className="mt-4 max-w-xl text-base leading-7 text-zinc-600">
-              Drift compares your old normal with your recent normal, then points to the
-              spending patterns that quietly changed.
+              Drift compares earlier months with recent months, then turns the meaningful
+              changes into simple notes, timely checks, and a private recovery report.
             </p>
           </div>
           <div className="flex flex-col items-start gap-3 md:items-end">
@@ -52,13 +53,15 @@ export default function ScanPage() {
         {sourceMessage ? <div className="mt-5 rounded-[8px] border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">{sourceMessage}</div> : null}
 
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          <Metric
-            label="Drift score"
-            value={scan.scoreLabel}
-            tone={scan.scanState === "drift_detected" ? "amber" : "emerald"}
-            explanation="This is the overall shift from your old spending normal to your recent spending normal. Bigger repeated increases count more than tiny changes. A 0 means no repeated overspend was found in this window."
-            learnHref="/methodology"
-          />
+          <PremiumFeatureGate featureName="Drift Score">
+            <Metric
+              label="Drift score"
+              value={scan.scoreLabel}
+              tone={scan.scanState === "drift_detected" ? "amber" : "emerald"}
+              explanation="This is the overall shift from your old spending normal to your recent spending normal. Bigger repeated increases count more than tiny changes. A 0 means no repeated overspend was found in this window."
+              learnHref="/methodology"
+            />
+          </PremiumFeatureGate>
           <Metric label="Overspend" value={scan.monthlyOverspendLabel} tone="rose" explanation="This is the extra amount showing up each month compared with your old baseline." />
           <Metric
             label="If saved and invested"
@@ -87,9 +90,9 @@ export default function ScanPage() {
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Evidence of drift</h2>
+            <h2 className="text-lg font-semibold">Transactions behind the score</h2>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
-              <span>Old normal {scan.baselineWindowLabel} compared with recent normal {scan.recentWindowLabel}.</span>
+              <span>Earlier months {scan.baselineWindowLabel} compared with recent months {scan.recentWindowLabel}.</span>
               <InfoHint text="Drift adapts to the transaction duration: it compares the earliest half of available months with the latest half. With two months, that means one old-normal month versus one recent-normal month." />
             </div>
           </div>
@@ -101,7 +104,7 @@ export default function ScanPage() {
         <div className="mt-5 space-y-4">
           {scan.topCategories.length > 0 ? scan.topCategories.map((category) => <CategoryRow key={category.category} category={category} />) : (
             <div className="surface-card text-sm leading-6 text-muted-foreground">
-              Import at least two months of transaction history so Drift can compare your old normal with your recent normal.
+              Import at least two months of transactions so Drift can compare earlier spending with recent spending.
             </div>
           )}
         </div>

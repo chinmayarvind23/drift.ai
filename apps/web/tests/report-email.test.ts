@@ -1,5 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { buildReportReminderHtml, getReportEmailConfig } from "../lib/report-email";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { buildReportReminderHtml, getReportEmailConfig, sendReportReminderEmail } from "../lib/report-email";
+
+vi.mock("../lib/report-pdf", () => ({
+  createReportPdfBase64: vi.fn(async () => "pdf-base64")
+}));
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("getReportEmailConfig", () => {
   it("enables report email when Resend is configured", () => {
@@ -22,18 +30,61 @@ describe("getReportEmailConfig", () => {
 });
 
 describe("buildReportReminderHtml", () => {
-  it("links back to the report without including raw transactions", () => {
+  it("explains that the PDF is attached without linking to localhost", () => {
     const html = buildReportReminderHtml(
       {
         email: "maya@example.com",
         intent: "report",
         created_at: "2026-04-13T00:00:00.000Z"
-      },
-      "http://localhost:3000"
+      }
     );
 
-    expect(html).toMatch(/Open your report/);
-    expect(html).toMatch(/http:\/\/localhost:3000\/report/);
+    expect(html).toMatch(/PDF is attached/);
+    expect(html).not.toMatch(/localhost:3000/);
     expect(html).toMatch(/Raw transaction rows are not included/);
+  });
+});
+
+describe("sendReportReminderEmail", () => {
+  it("attaches the generated report PDF through Resend", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: "email_123" }), { status: 200 })
+    );
+
+    const result = await sendReportReminderEmail(
+      {
+        email: "maya@example.com",
+        intent: "report",
+        created_at: "2026-04-13T00:00:00.000Z"
+      },
+      {
+        apiKey: "re_123",
+        appBaseUrl: "http://localhost:3000",
+        from: "Drift <report@example.com>"
+      },
+      {
+        scoreLabel: "64",
+        monthlyOverspendLabel: "$27",
+        investmentGainLabel: "$9",
+        executiveSummary: "Drift found one pattern.",
+        recoverySteps: ["Dining: keep one planned dinner."],
+        interceptSummaries: ["Intentional: Bar Luce was reviewed."],
+        privacyNote: "Raw transactions stayed local."
+      }
+    );
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1]?.body as string) as {
+      attachments: Array<{ filename: string; content: string }>;
+      html: string;
+    };
+
+    expect(result.sent).toBe(true);
+    expect(body.attachments).toEqual([
+      {
+        filename: "drift-scan-report.pdf",
+        content: "pdf-base64"
+      }
+    ]);
+    expect(body.html).not.toContain("localhost:3000/report");
   });
 });

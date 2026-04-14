@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildInterestLead } from "@/lib/account-sync";
 import { getReportEmailConfig, sendReportReminderEmail } from "@/lib/report-email";
+import type { ReportPdfInput } from "@/lib/report-pdf";
 import { createSupabaseServiceClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -8,13 +9,17 @@ export const revalidate = 0;
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { email?: string; intent?: "report" | "early_access" };
+    const body = (await request.json()) as {
+      email?: string;
+      intent?: "report" | "early_access";
+      report?: ReportPdfInput;
+    };
     const lead = buildInterestLead(body.email ?? "", body.intent ?? "early_access");
     const supabase = createSupabaseServiceClient();
     const emailConfig = body.intent === "report" ? getReportEmailConfig() : null;
     const emailResult = emailConfig
-      ? await sendReportReminderEmail(lead, emailConfig)
-      : { sent: false };
+      ? await sendReportReminderEmail(lead, emailConfig, body.report)
+      : { sent: false, error: body.intent === "report" ? "Add RESEND_API_KEY to send report emails." : undefined };
 
     if (!supabase) {
       return NextResponse.json({

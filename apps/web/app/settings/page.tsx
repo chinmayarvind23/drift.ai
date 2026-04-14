@@ -31,11 +31,11 @@ export default function SettingsPage() {
             <dd className="mt-1 font-semibold">{scan.projectionScenarioLabel}</dd>
           </div>
           <div className="surface-card">
-            <dt className="text-muted-foreground">Behavior notes</dt>
+            <dt className="text-muted-foreground">Pattern notes</dt>
             <dd className="mt-1 font-semibold">{Object.keys(behaviorInsights).length}</dd>
           </div>
           <div className="surface-card">
-            <dt className="text-muted-foreground">Intercept decisions</dt>
+            <dt className="text-muted-foreground">Intercept choices</dt>
             <dd className="mt-1 font-semibold">{interceptDecisions.length}</dd>
           </div>
           <div className="surface-card">
@@ -47,26 +47,26 @@ export default function SettingsPage() {
           <div className="surface-card">
             <p className="font-semibold">Local and encrypted</p>
             <p className="mt-2 leading-6 text-muted-foreground">
-              Transactions, notes, Pattern Lab tags, intercept decisions, and scenario settings are encrypted in this browser.
+              Transactions, notes, saved pattern labels, intercept choices, and scenario settings are encrypted in this browser.
             </p>
           </div>
           <div className="surface-card">
             <p className="font-semibold">Backup sync</p>
             <p className="mt-2 leading-6 text-muted-foreground">
-              Account backup is managed from the Account page. It syncs scan summaries, tags, intercept decisions, and what-if settings only.
+              Account backup is managed from the Account page. It syncs scan summaries, saved pattern labels, intercept choices, and what-if settings only.
             </p>
           </div>
           <div className="surface-card">
             <p className="font-semibold">Local AI</p>
             <p className="mt-2 leading-6 text-muted-foreground">
-              Pattern Lab uses a local browser classifier, the report can use local Qwen through Ollama, and fallback rules keep everything working offline.
+              Pattern Lab and the report can use local Qwen through Ollama. If local AI is off, Drift keeps working with simpler local rules.
             </p>
           </div>
         </div>
         <div className="mt-6 rounded-[8px] border border-rose-200 bg-rose-50 p-4 dark:border-rose-400/30 dark:bg-rose-400/10">
           <p className="text-sm font-semibold text-rose-950 dark:text-rose-100">Wipe local audit</p>
           <p className="mt-2 text-sm leading-6 text-rose-900/75 dark:text-rose-100/75">
-            Clears local transactions, notes, behavior tags, intercept decisions, and the browser encryption key.
+            Clears local transactions, notes, saved pattern labels, intercept choices, and the browser encryption key.
           </p>
           <Button variant="destructive" className="mt-4 h-10 rounded-[8px]" onClick={clearLocalAuditState}>
             Wipe local data

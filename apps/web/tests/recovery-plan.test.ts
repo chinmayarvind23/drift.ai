@@ -48,7 +48,29 @@ describe("buildRecoveryPlan", () => {
       actionLabel: "Keep the reward, cap the drift"
     });
     expect(plan.steps[0].prompt).toMatch(/planned reward/i);
-    expect(plan.steps[0].aiRecoveryPath).toMatch(/Because this looks like reward spending/i);
+    expect(plan.steps[0].aiRecoveryPath).toMatch(/Keep one planned Dining reward/i);
+    expect(plan.steps[0].whyItHelps).toMatch(/enjoy what matters/i);
     expect(plan.steps.find((step) => step.category === "Rides")?.prompt).toMatch(/default fallback/i);
+  });
+
+  it("describes intentional upgrades without guilt or mistake language", () => {
+    const scan = buildDemoDriftScan();
+    const plan = buildRecoveryPlan(scan, {
+      Dining: buildBehaviorInsight(
+        "Dining",
+        "This is an intentional upgrade after a promotion.",
+        "2026-04-12T10:00:00.000Z",
+        {
+          tag: "intentional_upgrade",
+          confidence: null,
+          modelProvider: "deterministic",
+          modelName: "test"
+        }
+      )
+    });
+
+    expect(plan.steps[0].behaviorTagLabel).toBe("Intentional upgrade");
+    expect(plan.steps[0].prompt).toMatch(/decide what amount of Dining still feels worth it/i);
+    expect(plan.steps[0].whyItHelps).not.toMatch(/mistake|guilt/i);
   });
 });

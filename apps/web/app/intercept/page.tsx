@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuditWorkspace } from "@/components/audit-workspace";
+import { DRIFT_CATEGORY_TAXONOMY } from "@/lib/evidence-review";
 import { buildSpendIntercept, decideIntercept, type SpendIntercept } from "@/lib/spend-intercept";
 
 export default function InterceptPage() {
@@ -13,20 +14,25 @@ export default function InterceptPage() {
     saveInterceptDecision,
     scan
   } = useAuditWorkspace();
-  const driftCategories = useMemo(
-    () => scan.topCategories.filter((item) => item.monthlyOverspendCents > 0),
-    [scan.topCategories]
-  );
   const [merchantName, setMerchantName] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [intercept, setIntercept] = useState<SpendIntercept | null>(null);
+  const [formMessage, setFormMessage] = useState<string | null>(null);
 
   function simulateTransaction() {
+    const parsedAmount = Number(amount);
+
+    if (!merchantName.trim() || !category || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setFormMessage("Add a merchant, amount, and category before running the check.");
+      return;
+    }
+
+    setFormMessage(null);
     setIntercept(
       buildSpendIntercept(scan, {
         merchantName: merchantName.trim(),
-        amountCents: Math.round(Number(amount) * 100),
+        amountCents: Math.round(parsedAmount * 100),
         category
       }, behaviorInsights)
     );
@@ -50,7 +56,7 @@ export default function InterceptPage() {
         </Badge>
         <h1 className="mt-4 text-3xl font-semibold">Spend intercept</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Simulate a new transaction and check whether it repeats a high-drift category.
+          Type a possible purchase. Drift checks whether it repeats a category that is already running high.
         </p>
 
         <div className="mt-6 grid gap-4">
@@ -66,11 +72,12 @@ export default function InterceptPage() {
             <span className="text-xs font-medium uppercase text-muted-foreground">Category</span>
             <select className="field-control" value={category} onChange={(event) => setCategory(event.target.value)}>
               <option value="">Choose a category</option>
-              {driftCategories.map((item) => (
-                <option key={item.category} value={item.category}>{item.category}</option>
+              {DRIFT_CATEGORY_TAXONOMY.map((item) => (
+                <option key={item} value={item}>{item}</option>
               ))}
             </select>
           </label>
+          {formMessage ? <p className="text-sm text-muted-foreground">{formMessage}</p> : null}
           <Button className="h-10 rounded-[8px]" disabled={!merchantName.trim() || !amount || !category} onClick={simulateTransaction}>
             Simulate transaction
           </Button>
@@ -95,7 +102,7 @@ export default function InterceptPage() {
                 <Metric label="Purchase" value={`${intercept.merchantName} · ${intercept.amountLabel}`} />
                 <Metric label="Pattern" value={`${intercept.category} · ${intercept.driftPercentLabel}`} />
                 <Metric label="Overspend" value={intercept.monthlyOverspendLabel} />
-                <Metric label="Behavior tag" value={intercept.insightLabel} />
+                <Metric label="Pattern label" value={intercept.insightLabel} />
               </div>
               {intercept.flagged ? (
                 <div className="flex flex-col gap-2 sm:flex-row">

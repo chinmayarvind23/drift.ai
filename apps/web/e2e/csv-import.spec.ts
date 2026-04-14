@@ -10,7 +10,7 @@ test("imports CSV and updates the Drift Scan dashboard", async ({ page }) => {
 
   await expect(page.getByText("Imported 12 transactions from sample-drift.csv.")).toBeVisible();
   await expect(page.getByText("Imported CSV")).toBeVisible();
-  await expect(page.getByText("Where did the raise go?")).toBeVisible();
+  await expect(page.getByText("See where your spending quietly changed.")).toBeVisible();
   await expect(page.getByText("$2,123")).toBeVisible();
   await expect(page.getByText("$4,800 redirected from overspend")).toBeVisible();
   await expect(page.getByText("Old normal $20. Recent normal $60.")).toBeVisible();
@@ -30,10 +30,10 @@ test("keeps demo-only test profile controls off the Scan page", async ({ page })
 test("starts with zero values until evidence is imported or synced", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByText("Waiting for evidence")).toBeVisible();
+  await expect(page.getByText("Waiting for transactions")).toBeVisible();
   await expect(page.getByText("No data yet")).toBeVisible();
   await expect(page.getByText("0 patterns flagged")).toBeVisible();
-  await expect(page.getByText("Import at least two months of transaction history")).toBeVisible();
+  await expect(page.getByText("Import at least two months of transactions")).toBeVisible();
   await expect(page.getByText("$0 redirected from overspend")).toBeVisible();
   await expect(page.getByText("Pattern question")).toHaveCount(0);
 });
@@ -43,6 +43,16 @@ test("keeps Pattern Question hidden when only a new pattern is present", async (
 
   await expect(page.getByRole("heading", { name: "New patterns to review" })).toBeVisible();
   await expect(page.getByText("Pattern question")).toHaveCount(0);
+});
+
+test("shows one Pattern Lab question for each flagged drift pattern", async ({ page }) => {
+  await importFixture(page, "multi-drift-stress.csv");
+
+  await page.getByRole("link", { name: "Pattern Lab" }).click();
+
+  await expect(page.getByText("Pattern question").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Delivery moved into the recent normal/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Rides moved into the recent normal/i })).toBeVisible();
 });
 
 test("opens Pattern Lab from the Add context prompt", async ({ page }) => {
@@ -67,7 +77,7 @@ test("customizes the saved-and-invested scenario", async ({ page }) => {
 test("edits evidence category and private note", async ({ page }) => {
   await importFixture(page, "evidence-review.csv");
 
-  await page.getByRole("link", { name: "Evidence" }).click();
+  await page.getByRole("link", { name: "Transactions" }).click();
   const firstEvidenceRow = page.getByTestId("evidence-row").first();
   await firstEvidenceRow.getByLabel("Category").selectOption("Education");
   await firstEvidenceRow.getByLabel("Private note").fill("Not lifestyle drift.");
@@ -81,8 +91,8 @@ test("recalculates scan metrics after evidence category edits", async ({ page })
   await importFixture(page, "sample-drift.csv");
 
   await expect(page.getByText("$4,800 redirected from overspend")).toBeVisible();
-  await page.getByRole("link", { name: "Evidence" }).click();
-  await page.getByLabel("Search evidence").fill("2026-03-04");
+  await page.getByRole("link", { name: "Transactions" }).click();
+  await page.getByLabel("Search transactions").fill("2026-03-04");
   const barLuceRow = page.getByTestId("evidence-row").first();
   await barLuceRow.getByLabel("Category").selectOption("Education");
 
@@ -100,8 +110,8 @@ test("recalculates scan metrics after evidence category edits", async ({ page })
 test("recalculates when an already edited category is edited again", async ({ page }) => {
   await importFixture(page, "sample-drift.csv");
 
-  await page.getByRole("link", { name: "Evidence" }).click();
-  await page.getByLabel("Search evidence").fill("2026-03-04");
+  await page.getByRole("link", { name: "Transactions" }).click();
+  await page.getByLabel("Search transactions").fill("2026-03-04");
   const barLuceRow = page.getByTestId("evidence-row").first();
 
   await barLuceRow.getByLabel("Category").selectOption("Education");
@@ -112,8 +122,8 @@ test("recalculates when an already edited category is edited again", async ({ pa
   await page.goto("/category/Home");
   await expect(page.getByText("Bar Luce").first()).toBeVisible();
 
-  await page.getByRole("link", { name: "Evidence" }).click();
-  await page.getByLabel("Search evidence").fill("2026-03-04");
+  await page.getByRole("link", { name: "Transactions" }).click();
+  await page.getByLabel("Search transactions").fill("2026-03-04");
   await page.getByTestId("evidence-row").first().getByLabel("Category").selectOption("Dining");
 
   await expect(page.locator("dl div", { hasText: "Overspend" }).getByText("$40", { exact: true })).toBeVisible();
@@ -123,14 +133,14 @@ test("recalculates when an already edited category is edited again", async ({ pa
 test("filters and paginates evidence review", async ({ page }) => {
   await importFixture(page, "evidence-review.csv");
 
-  await page.getByRole("link", { name: "Evidence" }).click();
+  await page.getByRole("link", { name: "Transactions" }).click();
   await expect(page.getByText("Page 1 of")).toBeVisible();
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("Page 2 of")).toBeVisible();
 
   await page.getByLabel("Filter category").selectOption("Dining");
   await expect(page.getByText("Bar Luce").first()).toBeVisible();
-  await page.getByLabel("Search evidence").fill("Nori");
+  await page.getByLabel("Search transactions").fill("Nori");
   await expect(page.getByText("Nori House").first()).toBeVisible();
 });
 
@@ -148,8 +158,8 @@ test("opens category detail from the scan evidence list", async ({ page }) => {
 test("updates category detail after moving evidence into a new category", async ({ page }) => {
   await importFixture(page, "evidence-review.csv");
 
-  await page.getByRole("link", { name: "Evidence" }).click();
-  await page.getByLabel("Search evidence").fill("Bodega");
+  await page.getByRole("link", { name: "Transactions" }).click();
+  await page.getByLabel("Search transactions").fill("Bodega");
   const bodegaRow = page.getByTestId("evidence-row").first();
   await bodegaRow.getByLabel("Category").selectOption("Delivery");
 
@@ -159,15 +169,15 @@ test("updates category detail after moving evidence into a new category", async 
   await expect(page.getByText("No longer active")).toBeVisible();
   await expect(page.getByText("Old monthly average", { exact: true })).toBeVisible();
   await expect(page.getByText("Recent monthly average", { exact: true })).toBeVisible();
-  await expect(page.getByText("Monthly averages are calculated across")).toBeVisible();
+  await expect(page.getByText("Monthly averages compare earlier months")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Monthly timeline" })).toBeVisible();
   await expect(page.getByText("Bodega").first()).toBeVisible();
 
   await page.getByRole("link", { name: "Intercept" }).click();
-  await expect(page.getByLabel("Category").locator('option[value="Delivery"]')).toHaveCount(0);
+  await expect(page.getByLabel("Category").locator('option[value="Delivery"]')).toHaveCount(1);
 });
 
-test("saves a Pattern Lab behavior tag and includes it in the report", async ({ page }) => {
+test("saves a Pattern Lab Pattern label and includes it in the report", async ({ page }) => {
   await page.addInitScript(() => {
     (window as unknown as {
       __DRIFT_AI_CLASSIFIER__: () => Promise<{ labels: string[]; scores: number[] }>;
@@ -187,12 +197,14 @@ test("saves a Pattern Lab behavior tag and includes it in the report", async ({ 
   await page.getByRole("link", { name: "Pattern Lab" }).click();
   await expect(page.getByText(/Model:/i)).toHaveCount(0);
   await page.getByLabel("Your private answer").fill("I got a new job and felt like I deserved nicer dinners.");
-  await page.getByRole("button", { name: "Suggest behavior tag" }).click();
+  await page.getByRole("button", { name: "Suggest pattern label" }).click();
 
-  await expect(page.getByLabel("Behavior tag")).toHaveValue("reward_spending");
-  await expect(page.getByText(/AI suggested reward spending/i).first()).toBeVisible();
+  await expect(page.getByLabel("Pattern label")).toHaveValue("reward_spending");
+  await expect(page.getByText(/Local AI suggested reward spending/i).first()).toBeVisible();
+  await expect(page.getByText(/what would count as one intentional reward/i)).toBeVisible();
+  await page.getByLabel("AI follow-up answer").fill("One planned Friday dinner is worth keeping; random weekday delivery is automatic.");
   await expect(page.getByText(/confidence/i)).toHaveCount(0);
-  await page.getByLabel("Behavior tag").selectOption("intentional_upgrade");
+  await page.getByLabel("Pattern label").selectOption("intentional_upgrade");
   await page.getByRole("button", { name: "Save insight" }).click();
 
   await expect(page.locator("span").filter({ hasText: "Intentional upgrade" })).toBeVisible();
@@ -201,10 +213,10 @@ test("saves a Pattern Lab behavior tag and includes it in the report", async ({ 
   await page.getByRole("link", { name: "Report" }).click();
   await expect(page.getByRole("heading", { name: "Drift Scan report" })).toBeVisible();
   await expect(page.getByText("Dining · Intentional upgrade").first()).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Recovery path" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "30-day recovery path" })).toBeVisible();
   await expect(page.getByText("Sign in to generate this report").first()).toBeVisible();
   await expect(page.getByText("Financial AI review")).toBeVisible();
-  await expect(page.getByText("Financial pressure")).toBeVisible();
+  await expect(page.getByText(/Source: Drift Score/i)).toBeVisible();
 });
 
 test("simulates and saves a spend intercept decision", async ({ page }) => {
@@ -220,20 +232,20 @@ test("simulates and saves a spend intercept decision", async ({ page }) => {
   await page.getByRole("button", { name: "Simulate transaction" }).click();
 
   await expect(page.getByText("Intentionality check", { exact: true })).toBeVisible();
-  await expect(page.getByText(/Dining is already above your old normal/i)).toBeVisible();
+  await expect(page.getByText(/Dining is already running above your old average/i)).toBeVisible();
 
   await page.getByRole("button", { name: "Mark intentional" }).click();
   await expect(page.getByText("Dining marked intentional.")).toBeVisible();
 
   await page.getByRole("link", { name: "Report" }).click();
-  await expect(page.getByText(/This is not about the \$72/i)).toBeVisible();
-  await expect(page.getByText(/intentional Dining purchase inside a repeat Dining pattern/i)).toBeVisible();
+  await expect(page.getByText(/catching repeat spending/i)).toBeVisible();
+  await expect(page.getByText(/worth keeping/i)).toBeVisible();
   await expect(page.getByText(/Mark intentional/i)).toHaveCount(0);
 });
 
 test("persists local audit state across refresh and pages", async ({ page }) => {
   await importFixture(page, "evidence-review.csv");
-  await page.getByRole("link", { name: "Evidence" }).click();
+  await page.getByRole("link", { name: "Transactions" }).click();
 
   const firstEvidenceRow = page.getByTestId("evidence-row").first();
   await firstEvidenceRow.getByLabel("Category").selectOption("Education");
@@ -256,8 +268,8 @@ test("wipes local audit data from the privacy page", async ({ page }) => {
   await page.getByRole("button", { name: "Wipe local data" }).click();
 
   await expect(page.getByText("Not synced yet")).toBeVisible();
-  await expect(page.locator("dl div", { hasText: "Behavior notes" }).getByText("0", { exact: true })).toBeVisible();
-  await expect(page.locator("dl div", { hasText: "Intercept decisions" }).getByText("0", { exact: true })).toBeVisible();
+  await expect(page.locator("dl div", { hasText: "Pattern notes" }).getByText("0", { exact: true })).toBeVisible();
+  await expect(page.locator("dl div", { hasText: "Intercept choices" }).getByText("0", { exact: true })).toBeVisible();
 });
 
 test("keeps dark mode active across refreshes", async ({ page }) => {

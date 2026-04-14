@@ -1,0 +1,64 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      AUTH0_BASE_URL: ${AUTH0_BASE_URL:-http://localhost:3000}
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
+      AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-}
+      AUTH0_CLIENT_SECRET: ${AUTH0_CLIENT_SECRET:-}
+      AUTH0_SECRET: ${AUTH0_SECRET:-}
+      DRIFT_PLAID_CLIENT_ID: ${DRIFT_PLAID_CLIENT_ID:-}
+      DRIFT_PLAID_SECRET: ${DRIFT_PLAID_SECRET:-}
+      DRIFT_PLAID_ENVIRONMENT: ${DRIFT_PLAID_ENVIRONMENT:-sandbox}
+      DRIFT_PLAID_PRODUCTS: ${DRIFT_PLAID_PRODUCTS:-transactions}
+      DRIFT_PLAID_COUNTRY_CODES: ${DRIFT_PLAID_COUNTRY_CODES:-US}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
+      NEXT_SUPABASE_SERVICE_ROLE_KEY: ${NEXT_SUPABASE_SERVICE_ROLE_KEY:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      NEXT_PUBLIC_STRIPE_PAYMENT_LINK_URL: ${NEXT_PUBLIC_STRIPE_PAYMENT_LINK_URL:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      OLLAMA_GENERATE_URL: http://ollama:11434/api/generate
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:0.5b}
+      NEXT_PUBLIC_PREMIUM_GATE_ENABLED: ${NEXT_PUBLIC_PREMIUM_GATE_ENABLED:-false}
+    depends_on:
+      ollama:
+        condition: service_started
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DRIFT_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001
+      DRIFT_PLAID_CLIENT_ID: ${DRIFT_PLAID_CLIENT_ID:-}
+      DRIFT_PLAID_SECRET: ${DRIFT_PLAID_SECRET:-}
+      DRIFT_PLAID_ENVIRONMENT: ${DRIFT_PLAID_ENVIRONMENT:-sandbox}
+      DRIFT_PLAID_PRODUCTS: ${DRIFT_PLAID_PRODUCTS:-transactions}
+      DRIFT_PLAID_COUNTRY_CODES: ${DRIFT_PLAID_COUNTRY_CODES:-US}
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_started
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${OLLAMA_MODEL:-qwen2.5:0.5b}"]
+
+volumes:
+  ollama-data:

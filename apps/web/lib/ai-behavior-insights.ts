@@ -6,45 +6,19 @@ import {
   type BehaviorTag
 } from "./behavior-insights";
 
-export const BEHAVIOR_MODEL_ID = "Xenova/distilbert-base-uncased-mnli";
-const BEHAVIOR_MODEL_FALLBACK_ID = "Xenova/mobilebert-uncased-mnli";
-
-type CandidateLabel =
-  | "reward spending"
-  | "stress convenience"
-  | "social pressure"
-  | "habit creep"
-  | "life event"
-  | "intentional upgrade";
-
-type ZeroShotResult = {
-  labels: string[];
-  scores: number[];
+export type BehaviorTaggerResult = {
+  tag: BehaviorTag;
+  provider: BehaviorInsight["modelProvider"];
+  followUpQuestion?: string;
 };
 
-type ZeroShotClassifier = (
-  text: string,
-  candidateLabels: string[],
-  options?: { hypothesis_template?: string; multi_label?: boolean }
-) => Promise<ZeroShotResult>;
-
-const CANDIDATE_TAGS: Record<CandidateLabel, BehaviorTag> = {
-  "reward spending": "reward_spending",
-  "stress convenience": "stress_convenience",
-  "social pressure": "social_pressure",
-  "habit creep": "habit_creep",
-  "life event": "life_event",
-  "intentional upgrade": "intentional_upgrade"
-};
-
-const CANDIDATE_LABELS = Object.keys(CANDIDATE_TAGS) as CandidateLabel[];
-let classifierPromise: Promise<ZeroShotClassifier> | null = null;
+type BehaviorTagger = (category: string, answer: string) => Promise<BehaviorTaggerResult>;
 
 export async function buildAiBehaviorInsight(
   category: string,
   answer: string,
   createdAt = new Date().toISOString(),
-  classifierLoader = getHuggingFaceBehaviorClassifier
+  tagger: BehaviorTagger = getOllamaBehaviorTag
 ): Promise<BehaviorInsight> {
   const trimmedAnswer = answer.trim();
 
@@ -53,32 +27,18 @@ export async function buildAiBehaviorInsight(
   }
 
   try {
-    const classifier = await classifierLoader();
-    const result = await classifier(
-      trimmedAnswer,
-      [...CANDIDATE_LABELS],
-      {
-        hypothesis_template: "This spending explanation is about {}.",
-        multi_label: false
-      }
-    );
-    const label = result.labels[0]?.toLowerCase() as CandidateLabel | undefined;
-    const confidence = result.scores[0] ?? 0;
-    const aiTag = label ? CANDIDATE_TAGS[label] : undefined;
-    const fallbackTag = classifyBehaviorAnswer(trimmedAnswer);
-    const tag = aiTag ?? fallbackTag;
+    const result = await tagger(category, trimmedAnswer);
 
     return buildBehaviorInsight(category, trimmedAnswer, createdAt, {
-      tag,
-      confidence,
-      modelProvider: "huggingface",
-      modelName: BEHAVIOR_MODEL_ID
+      tag: result.tag,
+      confidence: null,
+      modelProvider: result.provider,
+      modelName: result.provider === "ollama" ? "qwen-local" : "keyword-fallback",
+      followUpQuestion: result.followUpQuestion ?? buildLocalFollowUpQuestion(category, result.tag)
     });
   } catch {
-    const tag = classifyBehaviorAnswer(trimmedAnswer);
-
     return buildBehaviorInsight(category, trimmedAnswer, createdAt, {
-      tag,
+      tag: classifyBehaviorAnswer(trimmedAnswer),
       confidence: null,
       modelProvider: "deterministic",
       modelName: "keyword-fallback"
@@ -86,81 +46,101 @@ export async function buildAiBehaviorInsight(
   }
 }
 
+function buildLocalFollowUpQuestion(category: string, tag: BehaviorTag): string {
+  if (tag === "reward_spending") {
+    return `For ${category}, what would count as one intentional reward versus an automatic repeat?`;
+  }
+
+  if (tag === "stress_convenience") {
+    return `For ${category}, what stressful moment or convenience trigger made this the default?`;
+  }
+
+  if (tag === "social_pressure") {
+    return `For ${category}, whose plans or expectations made this harder to say no to?`;
+  }
+
+  if (tag === "habit_creep") {
+    return `For ${category}, when did this start feeling automatic instead of chosen?`;
+  }
+
+  if (tag === "intentional_upgrade") {
+    return `For ${category}, what part of this upgrade is worth keeping on purpose?`;
+  }
+
+  if (tag === "life_event") {
+    return `For ${category}, which part of this life change is temporary and which part is permanent?`;
+  }
+
+  return `What specifically changed around ${category}: stress, reward, social plans, habit, or a life event?`;
+}
+
 export function describeInsightModel(insight: BehaviorInsight): string {
-  if (insight.modelProvider === "huggingface") {
-    return `AI suggested ${getBehaviorTagLabel(insight.tag).toLowerCase()}. You can edit it before saving.`;
+  if (insight.modelProvider === "ollama") {
+    return `Local AI suggested ${getBehaviorTagLabel(insight.tag).toLowerCase()}. You can edit it before saving.`;
   }
 
-  return "Insight saved locally. Add a little more detail if the tag needs refinement.";
+  return `Local rules suggested ${getBehaviorTagLabel(insight.tag).toLowerCase()}. Start Ollama for AI tagging, or edit the tag before saving.`;
 }
 
-async function getHuggingFaceBehaviorClassifier(): Promise<ZeroShotClassifier> {
-  const injectedClassifier = getInjectedClassifier();
+async function getOllamaBehaviorTag(category: string, answer: string): Promise<BehaviorTaggerResult> {
+  const injectedTagger = getInjectedBehaviorTagger();
 
-  if (injectedClassifier) {
-    return injectedClassifier;
+  if (injectedTagger) {
+    return injectedTagger(category, answer);
   }
 
-  if (!classifierPromise) {
-    classifierPromise = loadHuggingFaceBehaviorClassifier();
+  const response = await fetch("/api/ai/behavior", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ category, answer })
+  });
+
+  if (!response.ok) {
+    throw new Error("Local behavior AI is unavailable.");
   }
 
-  return classifierPromise;
-}
+  const body = await response.json() as {
+    tag?: BehaviorTag;
+    provider?: BehaviorInsight["modelProvider"];
+    followUpQuestion?: string;
+  };
 
-async function loadHuggingFaceBehaviorClassifier(): Promise<ZeroShotClassifier> {
-  const { env, pipeline } = await import("@huggingface/transformers");
-
-  env.allowRemoteModels = true;
-  env.allowLocalModels = false;
-  env.useBrowserCache = true;
-
-  return loadFirstAvailableClassifier(pipeline as (
-    task: "zero-shot-classification",
-    model: string,
-    options: { dtype: "q8" }
-  ) => Promise<ZeroShotClassifier>);
-}
-
-async function loadFirstAvailableClassifier(
-  pipeline: (
-    task: "zero-shot-classification",
-    model: string,
-    options: { dtype: "q8" }
-  ) => Promise<ZeroShotClassifier>
-): Promise<ZeroShotClassifier> {
-  let lastError: unknown;
-
-  for (const modelId of [BEHAVIOR_MODEL_ID, BEHAVIOR_MODEL_FALLBACK_ID]) {
-    try {
-      return await retry(() => pipeline("zero-shot-classification", modelId, { dtype: "q8" }));
-    } catch (error) {
-      lastError = error;
-    }
+  if (!body.tag) {
+    throw new Error("Local behavior AI returned no tag.");
   }
 
-  throw lastError instanceof Error ? lastError : new Error("Could not load a local AI classifier.");
+  return {
+    tag: body.tag,
+    provider: body.provider ?? "ollama",
+    followUpQuestion: body.followUpQuestion
+  };
 }
 
-async function retry<T>(operation: () => Promise<T>, attempts = 2): Promise<T> {
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError instanceof Error ? lastError : new Error("Operation failed.");
-}
-
-function getInjectedClassifier(): ZeroShotClassifier | null {
+function getInjectedBehaviorTagger(): BehaviorTagger | null {
   if (typeof window === "undefined") {
     return null;
   }
 
-  return (window as Window & { __DRIFT_AI_CLASSIFIER__?: ZeroShotClassifier })
-    .__DRIFT_AI_CLASSIFIER__ ?? null;
+  const windowWithTaggers = window as Window & {
+    __DRIFT_AI_TAGGER__?: BehaviorTagger;
+    __DRIFT_AI_CLASSIFIER__?: () => Promise<{ labels: string[]; scores: number[] }>;
+  };
+
+  if (windowWithTaggers.__DRIFT_AI_TAGGER__) {
+    return windowWithTaggers.__DRIFT_AI_TAGGER__;
+  }
+
+  if (windowWithTaggers.__DRIFT_AI_CLASSIFIER__) {
+    return async () => {
+      const result = await windowWithTaggers.__DRIFT_AI_CLASSIFIER__?.();
+      const label = result?.labels[0]?.toLowerCase().replace(/\s+/g, "_") as BehaviorTag | undefined;
+
+      return {
+        tag: label ?? "unknown",
+        provider: "ollama"
+      };
+    };
+  }
+
+  return null;
 }

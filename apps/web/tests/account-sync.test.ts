@@ -22,7 +22,7 @@ describe("buildAccountSyncPayload", () => {
           tagLabel: "Reward spending",
           summary: "Dining is tagged as reward spending.",
           createdAt: "2026-04-12T00:00:00.000Z",
-          modelProvider: "huggingface",
+          modelProvider: "ollama",
           modelName: "hidden",
           confidence: 0.91
         }
@@ -86,7 +86,7 @@ describe("backup restore helpers", () => {
         tagLabel: "Reward spending",
         summary: "Dining is tagged as reward spending.",
         createdAt: "2026-04-13T00:00:00.000Z",
-        modelProvider: "huggingface"
+        modelProvider: "ollama"
       }
     });
 

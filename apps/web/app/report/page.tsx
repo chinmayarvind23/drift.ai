@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AccountGate } from "@/components/account-gate";
 import { useAuditWorkspace } from "@/components/audit-workspace";
 import { LeadCapture } from "@/components/lead-capture";
+import { MarkdownBlock } from "@/components/markdown-block";
 import { PaymentButton } from "@/components/payment-button";
 import { InfoHint } from "@/components/audit-ui";
 import {
@@ -35,6 +36,34 @@ export default function ReportPage() {
     () => interceptDecisions.map(buildReportInterceptSummary),
     [interceptDecisions]
   );
+  const reportPdfInput = useMemo(() => ({
+    scoreLabel: scan.scoreLabel,
+    monthlyOverspendLabel: scan.monthlyOverspendLabel,
+    investmentGainLabel: scan.investmentGainLabel,
+    executiveSummary: reportSummary.executiveSummary,
+    financialReview: financialInsight?.summary,
+    recoverySteps: recoveryPlan.steps.map((step) => {
+      const localPath = localRecoveryPaths[step.category];
+
+      return [
+        `${step.category} - ${step.behaviorTagLabel}`,
+        localPath?.text ?? step.aiRecoveryPath
+      ].join("\n");
+    }),
+    interceptSummaries: interceptSummaries.map(
+      (summary) => `${summary.tagLabel}: ${summary.summary}`
+    ),
+    privacyNote: "Raw transactions stayed in this browser. Account backup syncs summaries, saved pattern notes, intercept choices, and what-if settings only."
+  }), [
+    interceptSummaries,
+    localRecoveryPaths,
+    financialInsight?.summary,
+    recoveryPlan.steps,
+    reportSummary.executiveSummary,
+    scan.investmentGainLabel,
+    scan.monthlyOverspendLabel,
+    scan.scoreLabel
+  ]);
 
   useEffect(() => {
     let isMounted = true;
@@ -43,7 +72,9 @@ export default function ReportPage() {
       const insight = await buildFinancialReportInsight({
         executiveSummary: reportSummary.executiveSummary,
         monthlyOverspendLabel: scan.monthlyOverspendLabel,
-        topPatternCount: reportSummary.topPatternLabels.length
+        scan,
+        behaviorInsights,
+        interceptDecisions
       });
 
       if (isMounted) {
@@ -56,7 +87,7 @@ export default function ReportPage() {
     return () => {
       isMounted = false;
     };
-  }, [reportSummary.executiveSummary, reportSummary.topPatternLabels.length, scan.monthlyOverspendLabel]);
+  }, [behaviorInsights, interceptDecisions, reportSummary.executiveSummary, scan]);
 
   useEffect(() => {
     let isMounted = true;
@@ -70,6 +101,9 @@ export default function ReportPage() {
             overspendLabel: step.targetReductionLabel,
             behaviorTagLabel: step.behaviorTagLabel,
             userAnswer: insight?.answer
+              ? [insight.answer, insight.followUpAnswer].filter(Boolean).join(" ")
+              : undefined,
+            followUpAnswer: insight?.followUpAnswer
           });
 
           return [step.category, path] as const;
@@ -89,21 +123,7 @@ export default function ReportPage() {
   }, [behaviorInsights, recoveryPlan.steps]);
 
   async function downloadPdf() {
-    await exportReportPdf({
-      scoreLabel: scan.scoreLabel,
-      monthlyOverspendLabel: scan.monthlyOverspendLabel,
-      investmentGainLabel: scan.investmentGainLabel,
-      executiveSummary: reportSummary.executiveSummary,
-      recoverySteps: recoveryPlan.steps.map((step) => {
-        const localPath = localRecoveryPaths[step.category];
-
-        return `${step.category}: ${localPath?.text ?? step.aiRecoveryPath}`;
-      }),
-      interceptSummaries: interceptSummaries.map(
-        (summary) => `${summary.tagLabel}: ${summary.summary}`
-      ),
-      privacyNote: "Raw transactions stayed in this browser. Account backup syncs summaries, behavior notes, intercept decisions, and what-if settings only."
-    });
+    await exportReportPdf(reportPdfInput);
   }
 
   return (
@@ -116,7 +136,7 @@ export default function ReportPage() {
           <div>
             <h1 className="text-3xl font-semibold">Drift Scan report</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              A local report of what changed, why it changed, and what the repeated pattern could mean.
+          A private report of what changed, what may be driving it, and one next step that fits your context.
             </p>
           </div>
           <AccountGate>
@@ -145,13 +165,20 @@ export default function ReportPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="font-semibold">Financial AI review</p>
-                <p className="mt-2 leading-6 text-muted-foreground">
-                  {financialInsight?.summary ?? "Reviewing the report summary locally..."}
-                </p>
+                <div className="mt-2">
+                  <MarkdownBlock text={financialInsight?.summary ?? "Reviewing the report summary locally..."} />
+                </div>
                 {financialInsight ? (
                   <p className="mt-2 text-xs text-muted-foreground">
                     {describeFinancialReportModel(financialInsight)}
                   </p>
+                ) : null}
+                {financialInsight?.sources.length ? (
+                  <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+                    {financialInsight.sources.slice(0, 6).map((source) => (
+                      <li key={source}>Source: {source}</li>
+                    ))}
+                  </ul>
                 ) : null}
               </div>
               <Badge className="w-fit rounded-[8px] border-border bg-card text-muted-foreground">
@@ -205,7 +232,7 @@ export default function ReportPage() {
         <div className="mt-7 rounded-[8px] border border-primary/20 bg-primary/5 p-5">
           <h2 className="text-xl font-semibold">30-day recovery path</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Drift uses your Pattern Lab answer to suggest one small reset for the next month. The goal is to keep intentional spending and stop the repeat pattern from becoming automatic.
+            Drift uses your Pattern Lab answer to suggest one small reset for the next month. The goal is to keep what feels worth it and reduce the repeat purchases you no longer want.
           </p>
           <div className="mt-4 space-y-3">
             {recoveryPlan.steps.length > 0 ? recoveryPlan.steps.map((step) => (
@@ -214,14 +241,9 @@ export default function ReportPage() {
                   <div>
                     <p className="font-semibold">{step.category} · {step.behaviorTagLabel}</p>
                     <p className="mt-2 leading-6 text-muted-foreground">{step.prompt}</p>
-                    <p className="mt-2 leading-6 text-muted-foreground">
-                      {localRecoveryPaths[step.category]?.text ?? step.aiRecoveryPath}
-                    </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {localRecoveryPaths[step.category]?.provider === "ollama"
-                        ? "Generated by local Qwen through Ollama."
-                        : "Prepared locally without sending transaction history to a cloud model."}
-                    </p>
+                    <div className="mt-2">
+                      <MarkdownBlock text={localRecoveryPaths[step.category]?.text ?? step.aiRecoveryPath} />
+                    </div>
                     <p className="mt-2 text-xs text-muted-foreground">{step.whyItHelps}</p>
                   </div>
                   <p className="font-semibold">{step.targetReductionLabel}</p>
@@ -291,12 +313,12 @@ export default function ReportPage() {
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Email yourself a reminder to finish or revisit this scan.
             </p>
-            <LeadCapture />
+            <LeadCapture reportAttachment={reportPdfInput} />
           </AccountGate>
         </div>
 
         <div className="mt-4 rounded-[8px] border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-950 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-100">
-          Privacy note: raw transactions stayed in this browser. Account backup syncs summaries, behavior notes, intercept decisions, and what-if settings only.
+          Privacy note: raw transactions stayed in this browser. Account backup syncs summaries, saved pattern notes, intercept choices, and what-if settings only.
         </div>
       </div>
     </section>

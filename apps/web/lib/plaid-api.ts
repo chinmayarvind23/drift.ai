@@ -1,6 +1,6 @@
 import type { DriftTransaction } from "@drift/core";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const DEFAULT_API_BASE_URL = "/api";
 
 export interface PlaidLinkTokenResponse {
   link_token: string;
@@ -136,7 +136,7 @@ export function preparePlaidTransactionsForScan(
 }
 
 async function postJson<TResponse>(path: string, body: object): Promise<TResponse> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -150,6 +150,26 @@ async function postJson<TResponse>(path: string, body: object): Promise<TRespons
   }
 
   return response.json() as Promise<TResponse>;
+}
+
+export function getApiBaseUrl(
+  configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
+  hostname = typeof window === "undefined" ? "" : window.location.hostname
+): string {
+  if (!configuredBaseUrl) {
+    return DEFAULT_API_BASE_URL;
+  }
+
+  const normalizedBaseUrl = configuredBaseUrl.replace(/\/$/, "");
+  const pointsAtLocalhost =
+    normalizedBaseUrl.includes("localhost") || normalizedBaseUrl.includes("127.0.0.1");
+  const browserIsLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
+
+  if (pointsAtLocalhost && !browserIsLocalhost) {
+    return DEFAULT_API_BASE_URL;
+  }
+
+  return normalizedBaseUrl;
 }
 
 async function readErrorMessage(response: Response): Promise<string> {

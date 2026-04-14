@@ -21,8 +21,8 @@ describe("spend intercept", () => {
 
     expect(intercept.flagged).toBe(true);
     expect(intercept.insightLabel).toBe("Reward spending");
-    expect(intercept.reason).toMatch(/intentionality check/i);
-    expect(intercept.ahaMessage).toMatch(/not about the \$72/i);
+    expect(intercept.reason).toMatch(/worth keeping/i);
+    expect(intercept.ahaMessage).toMatch(/not about judging \$72/i);
     expect(intercept.nextMove).toMatch(/planned reward/i);
   });
 
@@ -58,7 +58,7 @@ describe("spend intercept", () => {
     const summary = buildReportInterceptSummary(decideIntercept(intercept, "intentional"));
 
     expect(summary.tagLabel).toBe("Intentional");
-    expect(summary.summary).toMatch(/repeat Dining pattern/i);
+    expect(summary.summary).toMatch(/worth keeping/i);
     expect(summary.summary).not.toMatch(/mark .* intentional/i);
   });
 });

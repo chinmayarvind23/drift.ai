@@ -76,10 +76,34 @@ function writeRecoveryPath(input: {
   prompt: string;
 }): string {
   if (!input.tagLabel || !input.answer) {
-    return `Add behavior context for ${input.category}; then Drift can turn ${input.monthlyOverspendLabel}/month into a personal reset path.`;
+    return `Add a quick note for ${input.category}; then Drift can turn ${input.monthlyOverspendLabel}/month into a more useful next step.`;
   }
 
-  return `Because this looks like ${input.tagLabel.toLowerCase()}, protect the useful part of the pattern and reset the repeat spend: ${input.prompt}`;
+  if (input.tagLabel === "Reward spending") {
+    return `Keep one planned ${input.category} reward, then move the extra repeat spend before the next week starts.`;
+  }
+
+  if (input.tagLabel === "Stress convenience") {
+    return `Choose one easy ${input.category} fallback before the next busy stretch, so the default is ready before stress hits.`;
+  }
+
+  if (input.tagLabel === "Social pressure") {
+    return `Pick your ${input.category} limit before plans are made, so the choice is already decided when the invite comes in.`;
+  }
+
+  if (input.tagLabel === "Habit creep") {
+    return `Put one pause in front of ${input.category}, such as a weekly limit or one-day wait, to break the automatic loop.`;
+  }
+
+  if (input.tagLabel === "Life event") {
+    return `Separate the necessary ${input.category} change from the part that can reset this month.`;
+  }
+
+  if (input.tagLabel === "Intentional upgrade") {
+    return `Decide what amount of ${input.category} still feels worth it, then keep that choice visible before the next purchase.`;
+  }
+
+  return input.prompt;
 }
 
 function buildBehaviorRecovery(
@@ -90,7 +114,7 @@ function buildBehaviorRecovery(
     return {
       actionLabel: "Keep the reward, cap the drift",
       prompt: `Choose one planned reward for ${category}, then redirect the rest before it becomes automatic.`,
-      whyItHelps: "This protects the emotional win without letting every purchase become the new baseline."
+      whyItHelps: "This lets you enjoy what matters while stopping extra purchases from becoming routine."
     };
   }
 
@@ -128,9 +152,9 @@ function buildBehaviorRecovery(
 
   if (tag === "intentional_upgrade") {
     return {
-      actionLabel: "Accept or cap the upgrade",
-      prompt: `Decide whether ${category} is an accepted upgrade. If yes, cap it and remove it from guilt spending.`,
-      whyItHelps: "This keeps intentional spending from being treated like a mistake."
+      actionLabel: "Keep or cap the upgrade",
+      prompt: `Decide what amount of ${category} still feels worth it, then keep that choice visible before the next purchase.`,
+      whyItHelps: "This separates a real upgrade from repeat spending you no longer care about."
     };
   }
 

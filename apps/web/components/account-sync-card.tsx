@@ -13,7 +13,7 @@ export function AccountSyncCard() {
     restoreAccountBackup,
     scan
   } = useAuditWorkspace();
-  const [message, setMessage] = useState("Sign in to sync a summary backup.");
+  const [message, setMessage] = useState("Ready to sync when account backup is available.");
 
   async function syncAuditSummary() {
     setMessage("Syncing summary...");
@@ -65,7 +65,7 @@ export function AccountSyncCard() {
     <div className="surface-card">
       <p className="text-sm font-semibold">Account backup</p>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        Backup stores summaries, Pattern Lab notes, intercept decisions, and what-if settings. It does not upload raw transactions.
+        Backup stores scan summaries, saved pattern notes, intercept choices, and what-if settings. It does not upload raw transactions.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button className="h-10 rounded-[8px]" onClick={syncAuditSummary}>

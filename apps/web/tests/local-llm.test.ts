@@ -5,7 +5,7 @@ describe("getLocalLlmConfig", () => {
   it("defaults to a lightweight local Qwen model through Ollama", () => {
     expect(getLocalLlmConfig({})).toEqual({
       enabled: true,
-      endpoint: "http://localhost:11434/api/generate",
+      endpoint: "/api/ai/recovery",
       model: "qwen2.5:0.5b"
     });
   });
@@ -13,21 +13,28 @@ describe("getLocalLlmConfig", () => {
 
 describe("buildLocalLlmRecoveryPath", () => {
   it("uses the local LLM response when Ollama is available", async () => {
+    let requestBody = "";
     const recovery = await buildLocalLlmRecoveryPath(
       {
         category: "Dining",
         overspendLabel: "$80",
         behaviorTagLabel: "Reward spending",
-        userAnswer: "I got promoted."
+        userAnswer: "I got promoted.",
+        followUpAnswer: "Friday dinner is the reward I care about."
       },
-      async () => ({
-        ok: true,
-        json: async () => ({ response: "Keep one planned dinner and move the extra $80 before Friday." })
-      } as Response)
+      async (_url, init) => {
+        requestBody = String(init?.body ?? "");
+
+        return {
+          ok: true,
+          json: async () => ({ response: "Keep one planned dinner and move the extra $80 before Friday." })
+        } as Response;
+      }
     );
 
     expect(recovery.provider).toBe("ollama");
     expect(recovery.text).toMatch(/planned dinner/i);
+    expect(requestBody).toContain("Friday dinner is the reward I care about.");
   });
 
   it("falls back locally when Ollama is unavailable", async () => {

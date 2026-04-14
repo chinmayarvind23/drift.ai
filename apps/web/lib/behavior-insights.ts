@@ -10,11 +10,13 @@ export type BehaviorTag =
 export interface BehaviorInsight {
   category: string;
   answer: string;
+  followUpQuestion?: string;
+  followUpAnswer?: string;
   tag: BehaviorTag;
   tagLabel: string;
   summary: string;
   createdAt: string;
-  modelProvider: "huggingface" | "deterministic";
+  modelProvider: "ollama" | "deterministic";
   modelName: string;
   confidence: number | null;
 }
@@ -74,6 +76,8 @@ export function buildBehaviorInsight(
     confidence: number | null;
     modelProvider: BehaviorInsight["modelProvider"];
     modelName: string;
+    followUpQuestion?: string;
+    followUpAnswer?: string;
   }
 ): BehaviorInsight {
   const trimmedAnswer = answer.trim();
@@ -82,9 +86,11 @@ export function buildBehaviorInsight(
   return {
     category,
     answer: trimmedAnswer,
+    followUpQuestion: classification?.followUpQuestion,
+    followUpAnswer: classification?.followUpAnswer?.trim() || undefined,
     tag,
     tagLabel: TAG_LABELS[tag],
-    summary: summarizeBehavior(category, trimmedAnswer, tag),
+    summary: summarizeBehavior(category, trimmedAnswer, tag, classification?.followUpAnswer),
     createdAt,
     modelProvider: classification?.modelProvider ?? "deterministic",
     modelName: classification?.modelName ?? "keyword-fallback",
@@ -106,12 +112,21 @@ export function classifyBehaviorAnswer(answer: string): BehaviorTag {
   );
 }
 
-function summarizeBehavior(category: string, answer: string, tag: BehaviorTag): string {
+function summarizeBehavior(
+  category: string,
+  answer: string,
+  tag: BehaviorTag,
+  followUpAnswer?: string
+): string {
   if (tag === "unknown") {
     return `${category} needs a clearer behavior note before Drift can explain the pattern.`;
   }
 
-  return `${category} is tagged as ${TAG_LABELS[tag].toLowerCase()} because you said: "${answer}"`;
+  const followUp = followUpAnswer?.trim()
+    ? ` You also added: "${followUpAnswer.trim()}"`
+    : "";
+
+  return `${category} is tagged as ${TAG_LABELS[tag].toLowerCase()} because you said: "${answer}"${followUp}`;
 }
 
 export function getBehaviorTagLabel(tag: BehaviorTag): string {

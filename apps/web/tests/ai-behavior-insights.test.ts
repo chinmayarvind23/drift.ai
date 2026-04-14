@@ -1,50 +1,48 @@
 import { describe, expect, it } from "vitest";
 import {
-  BEHAVIOR_MODEL_ID,
   buildAiBehaviorInsight,
   describeInsightModel
 } from "../lib/ai-behavior-insights";
 
 describe("buildAiBehaviorInsight", () => {
-  it("uses a Hugging Face zero-shot classifier to create a behavior tag", async () => {
+  it("uses local AI to create an editable behavior tag", async () => {
     const insight = await buildAiBehaviorInsight(
       "Dining",
       "I got promoted and felt like I deserved nicer dinners.",
       "2026-04-12T10:00:00.000Z",
-      async () => async () => ({
-        labels: ["reward spending", "stress convenience", "habit creep"],
-        scores: [0.91, 0.06, 0.03]
+      async () => ({
+        tag: "reward_spending",
+        provider: "ollama",
+        followUpQuestion: "What reward is worth keeping?"
       })
     );
 
     expect(insight).toMatchObject({
       tag: "reward_spending",
       tagLabel: "Reward spending",
-      modelProvider: "huggingface",
-      modelName: BEHAVIOR_MODEL_ID,
-      confidence: 0.91
+      modelProvider: "ollama",
+      modelName: "qwen-local",
+      confidence: null,
+      followUpQuestion: "What reward is worth keeping?"
     });
-    expect(describeInsightModel(insight)).toContain("AI suggested reward spending.");
+    expect(describeInsightModel(insight)).toContain("Local AI suggested reward spending.");
     expect(describeInsightModel(insight)).not.toMatch(/confidence/i);
-    expect(describeInsightModel(insight)).not.toContain(BEHAVIOR_MODEL_ID);
   });
 
-  it("uses the highest-scoring AI label as the tag without a confidence threshold", async () => {
+  it("uses the local AI tag without exposing confidence to the user", async () => {
     const insight = await buildAiBehaviorInsight(
       "Shopping",
       "My routine changed and this became automatic.",
       "2026-04-12T10:00:00.000Z",
-      async () => async () => ({
-        labels: ["habit creep", "intentional upgrade", "reward spending"],
-        scores: [0.29, 0.28, 0.27]
-      })
+      async () => ({ tag: "habit_creep", provider: "ollama" })
     );
 
     expect(insight.tag).toBe("habit_creep");
     expect(insight.tagLabel).toBe("Habit creep");
+    expect(insight.confidence).toBeNull();
   });
 
-  it("falls back to deterministic classification when the model cannot load", async () => {
+  it("falls back to deterministic classification when local AI is unavailable", async () => {
     const insight = await buildAiBehaviorInsight(
       "Rides",
       "I was stressed and kept taking rides home late.",
@@ -61,5 +59,6 @@ describe("buildAiBehaviorInsight", () => {
       modelName: "keyword-fallback",
       confidence: null
     });
+    expect(describeInsightModel(insight)).toContain("Start Ollama");
   });
 });

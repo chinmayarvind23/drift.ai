@@ -14,7 +14,7 @@ import {
 
 export default function ConnectPage() {
   const { lastSyncAt, loadPlaidTransactions } = useAuditWorkspace();
-  const [statusMessage, setStatusMessage] = useState("Waiting for sandbox evidence.");
+  const [statusMessage, setStatusMessage] = useState("Waiting for sandbox transactions.");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const syncPublicToken = useCallback(

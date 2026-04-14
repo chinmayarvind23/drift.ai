@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
-import { buildStripeCheckoutBody, getStripeCheckoutConfig } from "@/lib/stripe-checkout";
+import {
+  buildStripeCheckoutBody,
+  getStripeCheckoutConfig,
+  getStripeCheckoutMissingReasons
+} from "@/lib/stripe-checkout";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,7 +16,7 @@ export async function POST() {
     return NextResponse.json(
       {
         ok: false,
-        error: "Stripe checkout is not configured."
+        error: `Stripe checkout is not configured. ${getStripeCheckoutMissingReasons().join(" ")}`
       },
       { status: 503 }
     );

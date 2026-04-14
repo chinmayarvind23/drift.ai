@@ -13,14 +13,13 @@ import driftLogo from "@/figs/drift-ai.jpeg";
 
 const NAV_ITEMS = [
   { href: "/", label: "Scan" },
-  { href: "/evidence", label: "Evidence" },
+  { href: "/evidence", label: "Transactions" },
+  { href: "/insights", label: "Pattern Lab" },
   { href: "/plan", label: "Plan" },
   { href: "/scenario", label: "What-if" },
-  { href: "/insights", label: "Pattern Lab" },
   { href: "/intercept", label: "Intercept" },
   { href: "/report", label: "Report" },
   { href: "/account", label: "Account" },
-  { href: "/connect", label: "Bank sync" },
   { href: "/settings", label: "Privacy" }
 ];
 
