@@ -139,4 +139,55 @@ describe("exportReportPdf", () => {
 
     expect(attachment).toBe("AQID");
   });
+
+  it("adds pages instead of cutting off long reports", async () => {
+    const addPage = vi.fn();
+    const text = vi.fn();
+    const longLines = Array.from({ length: 90 }, (_, index) => `- Report line ${index + 1}`);
+
+    await exportReportPdf(
+      {
+        scoreLabel: "66",
+        monthlyOverspendLabel: "$110",
+        investmentGainLabel: "$4,827",
+        executiveSummary: "Drift found two repeated spending patterns.",
+        financialReview: longLines.join("\n"),
+        recoverySteps: longLines.slice(0, 30),
+        interceptSummaries: [
+          "Intentional: order-in was reviewed.",
+          "Dismissed: pizza was reviewed."
+        ],
+        privacyNote: "Raw transactions stayed local."
+      },
+      async () => ({
+        jsPDF: class {
+          setFontSize = vi.fn();
+          setFont = vi.fn();
+          setTextColor = vi.fn();
+          setFillColor = vi.fn();
+          setDrawColor = vi.fn();
+          setLineWidth = vi.fn();
+          line = vi.fn();
+          roundedRect = vi.fn();
+          addImage = vi.fn();
+          addPage() {
+            addPage();
+          }
+          text(...args: unknown[]) {
+            text(...args);
+          }
+          splitTextToSize(value: string) {
+            return [value];
+          }
+          save = vi.fn();
+          output() {
+            return new Uint8Array([1, 2, 3]).buffer;
+          }
+        }
+      })
+    );
+
+    expect(addPage).toHaveBeenCalled();
+    expect(text.mock.calls.map((call) => call[0]).flat()).toContain("Privacy Note");
+  });
 });

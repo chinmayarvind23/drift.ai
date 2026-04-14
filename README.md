@@ -1,4 +1,12 @@
-# Drift.ai
+<p align="center">
+  <img src="apps/web/figs/drift-ai.jpeg" alt="Drift.ai logo" width="96" />
+</p>
+
+<h1 align="center">Drift.ai</h1>
+
+<p align="center">
+  Private AI lifestyle drift audits for people who want to know where the extra money went.
+</p>
 
 Drift.ai is a private AI lifestyle drift audit. It replaces the manual workflow of downloading bank transactions, building a spreadsheet, comparing old spending to recent spending, guessing what changed, and writing a plan by hand.
 

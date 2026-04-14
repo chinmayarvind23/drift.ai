@@ -130,6 +130,81 @@ describe("buildFinancialReportInsight", () => {
     expect(insight.summary).toContain("got promoted");
     expect(insight.summary).not.toMatch(/Compare old normal|Give one friction|their|daily/i);
   });
+
+  it("summarizes mixed intercept choices in the grounded review", async () => {
+    const scan = buildDemoDriftScan();
+    const insight = await buildFinancialReportInsight(
+      {
+        executiveSummary: "Drift found repeated overspending.",
+        monthlyOverspendLabel: "$80",
+        scan,
+        topPatterns: [{
+          ...scan.topCategories[0],
+          category: "Dining",
+          baselineLabel: "$30",
+          recentLabel: "$110",
+          monthlyOverspendLabel: "$80",
+          monthlyOverspendCents: 8000
+        }],
+        behaviorInsights: {
+          Dining: buildBehaviorInsight(
+            "Dining",
+            "got promoted",
+            "2026-04-12T10:00:00.000Z",
+            {
+              tag: "reward_spending",
+              confidence: null,
+              modelProvider: "ollama",
+              modelName: "qwen",
+              followUpAnswer: "reward"
+            }
+          )
+        },
+        interceptDecisions: [
+          {
+            id: "intercept-1",
+            category: "Dining",
+            merchantName: "Bar Luce",
+            amountLabel: "$50",
+            amountCents: 5000,
+            decision: "intentional",
+            createdAt: "2026-04-12T10:00:00.000Z",
+            flagged: true,
+            reason: "reason",
+            ahaMessage: "message",
+            nextMove: "next",
+            driftPercentLabel: "267%",
+            monthlyOverspendLabel: "$80",
+            insightLabel: "Reward spending"
+          },
+          {
+            id: "intercept-2",
+            category: "Dining",
+            merchantName: "Pizza",
+            amountLabel: "$24",
+            amountCents: 2400,
+            decision: "dismissed",
+            createdAt: "2026-04-12T11:00:00.000Z",
+            flagged: true,
+            reason: "reason",
+            ahaMessage: "message",
+            nextMove: "next",
+            driftPercentLabel: "267%",
+            monthlyOverspendLabel: "$80",
+            insightLabel: "Reward spending"
+          }
+        ]
+      },
+      async () => new Response(JSON.stringify({
+        summary: "their automatic override daily budget-related issue",
+        model: "qwen2.5:0.5b"
+      }), { status: 200 }) as Response
+    );
+
+    expect(insight.summary).toContain("Bar Luce was worth keeping");
+    expect(insight.summary).toContain("Pizza was dismissed");
+    expect(insight.summary).toContain("mixed signal");
+  });
 });
 
 describe("cleanFinancialReportSummary", () => {

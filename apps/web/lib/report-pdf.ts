@@ -4,8 +4,10 @@ export interface ReportPdfInput {
   investmentGainLabel: string;
   executiveSummary: string;
   financialReview?: string;
+  topPatternDetails?: string[];
   recoverySteps: string[];
   interceptSummaries: string[];
+  sources?: string[];
   privacyNote: string;
   logoDataUrl?: string;
 }
@@ -14,6 +16,7 @@ type JsPdfDocument = {
   addImage?: (imageData: string, format: string, x: number, y: number, width: number, height: number) => unknown;
   line?: (x1: number, y1: number, x2: number, y2: number) => unknown;
   roundedRect?: (x: number, y: number, width: number, height: number, rx: number, ry: number, style?: string) => unknown;
+  addPage?: () => unknown;
   setDrawColor?: (...color: number[]) => unknown;
   setFillColor?: (...color: number[]) => unknown;
   setFont?: (fontName: string, fontStyle?: string) => unknown;
@@ -71,6 +74,9 @@ async function buildReportPdfDocument(input: ReportPdfInput, jsPDF: JsPdfConstru
   if (input.financialReview?.trim()) {
     y = writeSection(doc, "Financial AI Review", normalizePdfLines([input.financialReview]), y + 2);
   }
+  if (input.topPatternDetails?.length) {
+    y = writeSection(doc, "Pattern Details", normalizePdfLines(input.topPatternDetails), y + 2);
+  }
   y = writeSection(doc, "30-Day Recovery Path", normalizePdfLines(input.recoverySteps), y + 2);
   y = writeSection(
     doc,
@@ -78,6 +84,9 @@ async function buildReportPdfDocument(input: ReportPdfInput, jsPDF: JsPdfConstru
     normalizePdfLines(input.interceptSummaries.length > 0 ? input.interceptSummaries : ["No intercept decisions saved yet."]),
     y + 2
   );
+  if (input.sources?.length) {
+    y = writeSection(doc, "Report Sources", normalizePdfLines(input.sources.map((source) => `- ${source}`)), y + 2);
+  }
   writeSection(doc, "Privacy Note", normalizePdfLines([input.privacyNote]), y + 2);
 
   return doc;
@@ -136,19 +145,20 @@ function writeSection(
   y: number
 ): number {
   const richDoc = doc as JsPdfDocument;
+  const sectionStartY = ensurePageSpace(richDoc, y, 18);
 
   richDoc.setDrawColor?.(226, 232, 240);
   richDoc.setLineWidth?.(0.2);
-  richDoc.line?.(14, y - 5, 196, y - 5);
+  richDoc.line?.(14, sectionStartY - 5, 196, sectionStartY - 5);
   richDoc.setTextColor?.(15, 23, 42);
   richDoc.setFont?.("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text(title, 14, y);
+  doc.text(title, 14, sectionStartY);
   richDoc.setFont?.("helvetica", "normal");
   richDoc.setTextColor?.(51, 65, 85);
   doc.setFontSize(9.5);
 
-  return writeLines(doc, lines, y + 7);
+  return writeLines(doc, lines, sectionStartY + 7);
 }
 
 function writeLines(
@@ -157,11 +167,15 @@ function writeLines(
   y: number
 ): number {
   let cursorY = y;
+  const richDoc = doc as JsPdfDocument;
 
   for (const line of lines) {
     const isBullet = line.startsWith("- ");
     const cleanLine = isBullet ? line.slice(2) : line;
     const wrapped = doc.splitTextToSize(cleanLine, isBullet ? 168 : 176) as string[];
+    const lineHeight = wrapped.length * 5.2 + 2.4;
+
+    cursorY = ensurePageSpace(richDoc, cursorY, lineHeight);
 
     if (isBullet) {
       doc.text("•", 16, cursorY);
@@ -170,10 +184,21 @@ function writeLines(
       doc.text(wrapped, 14, cursorY);
     }
 
-    cursorY += wrapped.length * 5.2 + 2.4;
+    cursorY += lineHeight;
   }
 
   return cursorY;
+}
+
+function ensurePageSpace(doc: JsPdfDocument, y: number, neededHeight: number): number {
+  const bottomMargin = 282;
+
+  if (y + neededHeight <= bottomMargin) {
+    return y;
+  }
+
+  doc.addPage?.();
+  return 18;
 }
 
 function normalizePdfLines(lines: string[]): string[] {

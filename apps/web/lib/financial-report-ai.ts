@@ -167,7 +167,7 @@ function buildGroundedFinancialReview(
     ? `Your note says "${insight.answer}"${insight.followUpAnswer ? `, and you added "${insight.followUpAnswer}"` : ""}.`
     : "No Pattern Lab note is saved yet, so the why is still open.";
   const decisionText = decisions.length > 0
-    ? `Your Intercept choice for ${decisions[0].merchantName} was marked ${decisions[0].decision}, so this looks like a pattern to choose deliberately rather than ignore.`
+    ? buildDecisionText(decisions, pattern.category)
     : "No Intercept choice is saved yet, so the report cannot tell whether the next purchase was intentional.";
 
   return [
@@ -182,6 +182,28 @@ function buildGroundedFinancialReview(
     `- For the next 30 days, use your follow-up answer as the default replacement when the same trigger shows up.`,
     `- Keep the pattern if it still feels worth ${pattern.monthlyOverspendLabel}/month; cut the extra repeats if you would rather use that money elsewhere.`
   ].join("\n");
+}
+
+function buildDecisionText(decisions: InterceptDecision[], category: string): string {
+  const intentionalMerchants = decisions
+    .filter((decision) => decision.decision === "intentional")
+    .map((decision) => decision.merchantName);
+  const dismissedMerchants = decisions
+    .filter((decision) => decision.decision === "dismissed")
+    .map((decision) => decision.merchantName);
+
+  if (intentionalMerchants.length > 0 && dismissedMerchants.length > 0) {
+    return [
+      `Your Intercept choices are a mixed signal: ${intentionalMerchants.join(", ")} was worth keeping, while ${dismissedMerchants.join(", ")} was dismissed from the ${category} pattern.`,
+      "That means you are separating intentional spending from repeat purchases you do not want to keep."
+    ].join(" ");
+  }
+
+  if (intentionalMerchants.length > 0) {
+    return `${intentionalMerchants.join(", ")} was marked worth keeping, so this looks like a pattern to cap deliberately instead of treating every purchase as a mistake.`;
+  }
+
+  return `${dismissedMerchants.join(", ")} was dismissed from the ${category} pattern, which suggests you are learning what should not count as part of the repeat pattern.`;
 }
 
 export function buildFinancialReportSources(

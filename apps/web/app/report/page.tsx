@@ -29,7 +29,10 @@ export default function ReportPage() {
     () => buildRecoveryPlan(scan, behaviorInsights),
     [behaviorInsights, scan]
   );
-  const reportSummary = useMemo(() => buildReportSummary(scan), [scan]);
+  const reportSummary = useMemo(
+    () => buildReportSummary(scan, interceptDecisions),
+    [interceptDecisions, scan]
+  );
   const paymentProof = getPaymentProofConfig();
   const [financialInsight, setFinancialInsight] = useState<FinancialReportInsight | null>(null);
   const [localRecoveryPaths, setLocalRecoveryPaths] = useState<Record<string, LocalRecoveryPath>>({});
@@ -43,6 +46,13 @@ export default function ReportPage() {
     investmentGainLabel: scan.investmentGainLabel,
     executiveSummary: reportSummary.executiveSummary,
     financialReview: financialInsight?.summary,
+    topPatternDetails: scan.topCategories
+      .filter((category) => category.monthlyOverspendCents > 0)
+      .slice(0, 3)
+      .map((category) => [
+        `${category.category}: old monthly average ${category.baselineLabel}, recent monthly average ${category.recentLabel}.`,
+        `Monthly overspend: ${category.monthlyOverspendLabel}. Drift score contribution is driven by ${category.driftPercentLabel} drift and dollar impact.`
+      ].join(" ")),
     recoverySteps: recoveryPlan.steps.map((step) => {
       const localPath = localRecoveryPaths[step.category];
 
@@ -54,16 +64,19 @@ export default function ReportPage() {
     interceptSummaries: interceptSummaries.map(
       (summary) => `${summary.tagLabel}: ${summary.summary}`
     ),
+    sources: financialInsight?.sources,
     privacyNote: "Raw transactions stayed in this browser. Account backup syncs summaries, saved pattern notes, intercept choices, and what-if settings only."
   }), [
     interceptSummaries,
     localRecoveryPaths,
     financialInsight?.summary,
+    financialInsight?.sources,
     recoveryPlan.steps,
     reportSummary.executiveSummary,
     scan.investmentGainLabel,
     scan.monthlyOverspendLabel,
-    scan.scoreLabel
+    scan.scoreLabel,
+    scan.topCategories
   ]);
 
   useEffect(() => {
