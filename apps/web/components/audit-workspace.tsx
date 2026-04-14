@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
   type ReactNode
@@ -33,6 +34,10 @@ import {
   type DriftScan,
   type ProjectionScenario
 } from "@/lib/drift-scan";
+import {
+  getDefaultInflationRate,
+  type InflationRateSnapshot
+} from "@/lib/inflation-rate";
 import { buildAiBehaviorInsight } from "@/lib/ai-behavior-insights";
 import type { BehaviorInsight } from "@/lib/behavior-insights";
 import type { InterceptDecision } from "@/lib/spend-intercept";
@@ -91,6 +96,13 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
   const [interceptDecisions, setInterceptDecisions] = useState<InterceptDecision[]>([]);
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [hasRestored, setHasRestored] = useState(false);
+  const [inflationRate, setInflationRate] =
+    useState<InflationRateSnapshot>(() => getDefaultInflationRate());
+  const scanInputRef = useRef({
+    activeEvidence,
+    projectionScenario,
+    transactionEdits
+  });
 
   const editedTransactions = useMemo(
     () =>
@@ -99,6 +111,14 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
         : [],
     [activeEvidence.transactions, transactionEdits]
   );
+
+  useEffect(() => {
+    scanInputRef.current = {
+      activeEvidence,
+      projectionScenario,
+      transactionEdits
+    };
+  }, [activeEvidence, projectionScenario, transactionEdits]);
 
   useEffect(() => {
     let isMounted = true;
@@ -140,7 +160,8 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
         restored.transactions,
         restored.sourceLabel,
         restored.projectionScenario,
-        restored.transactionEdits
+        restored.transactionEdits,
+        getDefaultInflationRate()
       );
       setHasRestored(true);
     }
@@ -151,6 +172,67 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!hasRestored) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadInflationRate() {
+      try {
+        const response = await fetch("/api/inflation");
+
+        if (!response.ok) {
+          return;
+        }
+
+        const body = await response.json() as {
+          annualRate?: number;
+          sourceLabel?: string;
+        };
+
+        const annualRate = body.annualRate;
+
+        if (
+          !isMounted ||
+          typeof annualRate !== "number" ||
+          !Number.isFinite(annualRate) ||
+          typeof body.sourceLabel !== "string"
+        ) {
+          return;
+        }
+
+        const nextInflationRate = {
+          annualRate,
+          sourceLabel: body.sourceLabel
+        };
+
+        setInflationRate(nextInflationRate);
+
+        const currentScanInput = scanInputRef.current;
+
+        if (currentScanInput.activeEvidence.transactions) {
+          setScanFromTransactions(
+            currentScanInput.activeEvidence.transactions,
+            currentScanInput.activeEvidence.sourceLabel,
+            currentScanInput.projectionScenario,
+            currentScanInput.transactionEdits,
+            nextInflationRate
+          );
+        }
+      } catch {
+        // Keep the fallback assumption so the scan still works offline.
+      }
+    }
+
+    void loadInflationRate();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [hasRestored]);
 
   useEffect(() => {
     if (!hasRestored) {
@@ -206,7 +288,7 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
       setLastSyncAt(new Date().toISOString());
       setSourceMessage(`Imported ${transactions.length} transactions from ${file.name}.`);
       setImportError(null);
-      setScanFromTransactions(transactions, "Imported CSV", projectionScenario, {});
+      setScanFromTransactions(transactions, "Imported CSV", projectionScenario, {}, inflationRate);
     } catch (error) {
       setImportError(error instanceof Error ? error.message : "Could not import this CSV.");
     } finally {
@@ -229,7 +311,7 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
     setLastSyncAt(new Date().toISOString());
     setSourceMessage(message);
     setImportError(null);
-    setScanFromTransactions(transactions, sourceLabel, projectionScenario, {});
+    setScanFromTransactions(transactions, sourceLabel, projectionScenario, {}, inflationRate);
   }
 
   function restoreAccountBackup(snapshot: AccountBackupSnapshot) {
@@ -255,7 +337,8 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
       activeEvidence.transactions,
       activeEvidence.sourceLabel,
       clampedScenario,
-      transactionEdits
+      transactionEdits,
+      inflationRate
     );
   }
 
@@ -288,7 +371,8 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
       activeEvidence.transactions,
       activeEvidence.sourceLabel,
       projectionScenario,
-      nextEdits
+      nextEdits,
+      inflationRate
     );
   }
 
@@ -324,21 +408,22 @@ export function AuditWorkspaceProvider({ children }: { children: ReactNode }) {
     setLastSyncAt(null);
     setSourceMessage(null);
     setImportError(null);
-    setScan(buildEmptyDriftScan(DEFAULT_SCENARIO));
+    setScan(buildEmptyDriftScan(DEFAULT_SCENARIO, inflationRate));
   }
 
   function setScanFromTransactions(
     transactions: DriftTransaction[] | null,
     sourceLabel: string,
     scenario: ProjectionScenario,
-    edits: Record<string, TransactionEdit>
+    edits: Record<string, TransactionEdit>,
+    scanInflationRate: InflationRateSnapshot
   ) {
     if (!transactions) {
-      setScan(buildEmptyDriftScan(scenario));
+      setScan(buildEmptyDriftScan(scenario, scanInflationRate));
       return;
     }
 
-    setScan(buildDriftScan(applyTransactionEdits(transactions, edits), sourceLabel, scenario));
+    setScan(buildDriftScan(applyTransactionEdits(transactions, edits), sourceLabel, scenario, scanInflationRate));
   }
 
   return (

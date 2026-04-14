@@ -24,7 +24,8 @@ describe("analyzeDrift", () => {
 
     const analysis = analyzeDrift(transactions, {
       baselineMonths: 3,
-      recentMonths: 3
+      recentMonths: 3,
+      annualInflationRate: 0
     });
 
     expect(analysis.driftScore).toBeGreaterThanOrEqual(70);
@@ -40,6 +41,33 @@ describe("analyzeDrift", () => {
       driftState: "stable",
       monthlyOverspendCents: 0
     });
+  });
+
+  it("inflation-adjusts the old normal before calculating drift", () => {
+    const transactions = months.flatMap((month, index) => [
+      transaction(month, "Dining", index < 3 ? 10_000 : 11_000)
+    ]);
+    const noInflation = analyzeDrift(transactions, {
+      baselineMonths: 3,
+      recentMonths: 3,
+      annualInflationRate: 0
+    });
+    const withInflation = analyzeDrift(transactions, {
+      baselineMonths: 3,
+      recentMonths: 3,
+      annualInflationRate: 0.12
+    });
+    const noInflationDining = noInflation.categories[0];
+    const withInflationDining = withInflation.categories[0];
+
+    expect(withInflationDining).toBeDefined();
+    expect(noInflationDining).toBeDefined();
+    expect(withInflationDining?.baselineMonthlyCents).toBeGreaterThan(
+      noInflationDining?.baselineMonthlyCents ?? 0
+    );
+    expect(withInflationDining?.monthlyOverspendCents).toBeLessThan(
+      noInflationDining?.monthlyOverspendCents ?? 0
+    );
   });
 
   it("ignores categories without spending in the baseline window", () => {

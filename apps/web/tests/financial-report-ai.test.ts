@@ -205,6 +205,62 @@ describe("buildFinancialReportInsight", () => {
     expect(insight.summary).toContain("Pizza was dismissed");
     expect(insight.summary).toContain("mixed signal");
   });
+
+  it("keeps every top pattern in the grounded report review", async () => {
+    const scan = buildDemoDriftScan();
+    const diningPattern = {
+      ...scan.topCategories[0],
+      category: "Dining",
+      baselineLabel: "$30",
+      recentLabel: "$110",
+      monthlyOverspendLabel: "$80",
+      monthlyOverspendCents: 8000
+    };
+    const deliveryPattern = {
+      ...scan.topCategories[0],
+      category: "Delivery",
+      baselineLabel: "$13",
+      recentLabel: "$93",
+      monthlyOverspendLabel: "$80",
+      monthlyOverspendCents: 8000
+    };
+    const insight = await buildFinancialReportInsight(
+      {
+        executiveSummary: "Drift found repeated overspending.",
+        monthlyOverspendLabel: "$160",
+        scan,
+        topPatterns: [diningPattern, deliveryPattern],
+        behaviorInsights: {
+          Dining: buildBehaviorInsight("Dining", "got promoted", "2026-04-12T10:00:00.000Z", {
+            tag: "reward_spending",
+            confidence: null,
+            modelProvider: "ollama",
+            modelName: "qwen",
+            followUpAnswer: "planned dinner"
+          }),
+          Delivery: buildBehaviorInsight("Delivery", "tired after late shifts", "2026-04-12T10:00:00.000Z", {
+            tag: "stress_convenience",
+            confidence: null,
+            modelProvider: "ollama",
+            modelName: "qwen",
+            followUpAnswer: "prep backup meals"
+          })
+        }
+      },
+      async () => new Response(JSON.stringify({
+        summary: "Compare old normal to recent normal with a bracketed scan citation.",
+        model: "qwen2.5:0.5b"
+      }), { status: 200 }) as Response
+    );
+
+    expect(insight.summary).toContain("### What changed");
+    expect(insight.summary).toContain("### Why it may have happened");
+    expect(insight.summary).toContain("### What to do next");
+    expect(insight.summary).toContain("Dining rose from $30 to $110 per month");
+    expect(insight.summary).toContain("Delivery rose from $13 to $93 per month");
+    expect(insight.summary).toContain("got promoted");
+    expect(insight.summary).toContain("tired after late shifts");
+  });
 });
 
 describe("cleanFinancialReportSummary", () => {
@@ -252,7 +308,7 @@ describe("buildFinancialReportSources", () => {
       }]
     });
 
-    expect(sources).toContain("Drift Score 79");
+    expect(sources).toContain("Drift Score 78");
     expect(sources.join("\n")).toMatch(/Dining: old normal/);
     expect(sources).toContain("Dining pattern label: Reward spending");
     expect(sources).toContain("Dining intercept: Bar Luce marked intentional");

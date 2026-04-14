@@ -71,7 +71,7 @@ describe("applyTransactionEdits", () => {
     const originalScan = buildDriftScan(transactions, "Original");
     const editedScan = buildDriftScan(editedTransactions, "Edited");
 
-    expect(originalScan.monthlyOverspendCents).toBe(20_000);
+    expect(originalScan.monthlyOverspendCents).toBe(19_851);
     expect(editedScan.monthlyOverspendCents).toBe(0);
   });
 

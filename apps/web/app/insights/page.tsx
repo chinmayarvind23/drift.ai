@@ -230,7 +230,7 @@ function PatternQuestion({
     <div className="rounded-[8px] border border-border bg-background p-4">
       <p className="text-xs font-medium uppercase text-muted-foreground">Pattern question</p>
       <h2 className="mt-2 text-xl font-semibold">
-        {pattern.category} moved into the recent normal. What changed around then?
+        {pattern.category} increased from the previous normal. What changed around then?
       </h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
         Old normal {pattern.baselineLabel}. Recent normal {pattern.recentLabel}. Monthly overspend {pattern.monthlyOverspendLabel}.

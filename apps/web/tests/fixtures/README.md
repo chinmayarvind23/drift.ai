@@ -31,6 +31,17 @@ Expected:
 - Expected tag: `Stress convenience`
 - Intercept should flag a repeat high-drift category.
 
+## income-spend-drift.csv
+
+Expected:
+- Drift Score: `61`
+- Overspend: `$94`
+- Top drift: `Dining`
+- `Rides` appears under `New patterns to review`
+- Cash flow map shows income rising from `$4,200` to `$5,200`
+- Cash flow map shows spending rising from `$1,860` to `$2,020`
+- Positive income rows are graphed as income and excluded from Drift Score.
+
 ## new-pattern-education.csv
 
 Expected:

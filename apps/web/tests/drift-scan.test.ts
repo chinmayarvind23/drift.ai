@@ -31,14 +31,14 @@ describe("buildDemoDriftScan", () => {
     const scan = buildDemoDriftScan();
 
     expect(scan.score).toBeGreaterThanOrEqual(70);
-    expect(scan.monthlyOverspendLabel).toBe("$488");
+    expect(scan.monthlyOverspendLabel).toBe("$482");
     expect("counterfactualLabel" in scan).toBe(false);
     expect("counterfactualCents" in scan).toBe(false);
-    expect(scan.investmentGainLabel).toBe("$25,905");
-    expect(scan.redirectedSavingsLabel).toBe("$58,560");
+    expect(scan.investmentGainLabel).toBe("$25,597");
+    expect(scan.redirectedSavingsLabel).toBe("$57,863");
     expect(scan.topCategories[0]).toMatchObject({
       category: "Dining",
-      monthlyOverspendLabel: "$280",
+      monthlyOverspendLabel: "$278",
       stateLabel: "High drift"
     });
     expect(scan.privacyItems).toContain("Raw transactions stay local and encrypted in this browser.");
@@ -162,7 +162,41 @@ describe("buildDriftScanFromCsv", () => {
     });
   });
 
-  it("describes a valid scan with no category increases as contraction", () => {
+  it("uses the supplied live inflation rate when building the scan", () => {
+    const transactions = [
+      {
+        transactionDate: "2025-03-15",
+        merchantName: "Bar Luce",
+        amountCents: 10000,
+        category: "Dining",
+        sourceHash: "old-dining",
+        source: "csv" as const
+      },
+      {
+        transactionDate: "2026-03-15",
+        merchantName: "Bar Luce",
+        amountCents: 12000,
+        category: "Dining",
+        sourceHash: "recent-dining",
+        source: "csv" as const
+      }
+    ];
+    const fallbackScan = buildDriftScan(transactions, "Imported CSV", undefined, {
+      annualRate: 0.03,
+      sourceLabel: "Fallback inflation assumption"
+    });
+    const liveRateScan = buildDriftScan(transactions, "Imported CSV", undefined, {
+      annualRate: 0.10,
+      sourceLabel: "BLS CPI-U March 2026"
+    });
+
+    expect(fallbackScan.monthlyOverspendLabel).toBe("$17");
+    expect(liveRateScan.monthlyOverspendLabel).toBe("$10");
+    expect(liveRateScan.inflationRateLabel).toBe("10%");
+    expect(liveRateScan.inflationSourceLabel).toBe("BLS CPI-U March 2026");
+  });
+
+  it("describes a valid scan with no category increases as steady", () => {
     const scan = buildDriftScan(
       [
         {
@@ -185,9 +219,9 @@ describe("buildDriftScanFromCsv", () => {
       "Plaid sandbox"
     );
 
-    expect(scan.scanState).toBe("contraction");
-    expect(scan.scanStateTitle).toBe("No overspending found");
-    expect(scan.scanStateMessage).toMatch(/spending decreased/i);
+    expect(scan.scanState).toBe("stable");
+    expect(scan.scanStateTitle).toBe("Everything looks steady");
+    expect(scan.scanStateMessage).toMatch(/close to your old normal/i);
     expect(scan.score).toBe(0);
   });
 
@@ -319,9 +353,16 @@ describe("buildDriftScanFromCsv", () => {
     {
       fixture: "multi-drift-stress.csv",
       expectedScore: 73,
-      expectedOverspend: "$180",
+      expectedOverspend: "$179",
       expectedTopCategory: "Delivery",
       expectedNewPattern: undefined
+    },
+    {
+      fixture: "income-spend-drift.csv",
+      expectedScore: 61,
+      expectedOverspend: "$94",
+      expectedTopCategory: "Dining",
+      expectedNewPattern: "Rides"
     },
     {
       fixture: "new-pattern-education.csv",

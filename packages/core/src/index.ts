@@ -6,6 +6,7 @@ export interface DriftTransaction {
   merchantName: string;
   amountCents: number;
   category: string;
+  direction?: "expense" | "income";
   sourceHash: string;
   source: TransactionSource;
 }
@@ -31,6 +32,7 @@ export interface DriftAnalysis {
 export interface DriftAnalysisOptions {
   baselineMonths?: number;
   recentMonths?: number;
+  annualInflationRate?: number;
 }
 
 export interface CounterfactualInput {
@@ -71,12 +73,13 @@ export function parseTransactionsCsv(csv: string): DriftTransaction[] {
   for (const row of dataRows) {
     const transactionDate = readRequiredCell(row, headerIndex, "date");
     const merchantName = readRequiredCell(row, headerIndex, "merchant");
-    const amountCents = parseAmountCents(readRequiredCell(row, headerIndex, "amount"));
+    const amount = parseAmount(readRequiredCell(row, headerIndex, "amount"));
     const category = readRequiredCell(row, headerIndex, "category");
     const sourceHash = stableHash([
       transactionDate,
       merchantName.toLowerCase(),
-      String(amountCents),
+      String(amount.amountCents),
+      amount.direction,
       category.toLowerCase()
     ].join("|"));
 
@@ -84,7 +87,8 @@ export function parseTransactionsCsv(csv: string): DriftTransaction[] {
       transactions.set(sourceHash, {
         transactionDate,
         merchantName,
-        amountCents,
+        amountCents: amount.amountCents,
+        direction: amount.direction,
         category,
         sourceHash,
         source: "csv"
@@ -101,7 +105,9 @@ export function analyzeDrift(
 ): DriftAnalysis {
   const baselineMonthCount = options.baselineMonths ?? 3;
   const recentMonthCount = options.recentMonths ?? 3;
-  const months = uniqueSortedMonths(transactions);
+  const annualInflationRate = options.annualInflationRate ?? 0.03;
+  const expenseTransactions = transactions.filter((transaction) => transaction.direction !== "income");
+  const months = uniqueSortedMonths(expenseTransactions);
 
   if (months.length < baselineMonthCount + recentMonthCount) {
     return {
@@ -114,18 +120,23 @@ export function analyzeDrift(
 
   const baselineMonths = months.slice(0, baselineMonthCount);
   const recentMonths = months.slice(-recentMonthCount);
-  const categories = uniqueSortedCategories(transactions);
+  const categories = uniqueSortedCategories(expenseTransactions);
   const categoryDrifts: CategoryDrift[] = [];
+  const inflationFactor = calculateInflationFactor(
+    baselineMonths,
+    recentMonths,
+    annualInflationRate
+  );
 
   for (const category of categories) {
-    const baselineTotal = sumCategorySpend(transactions, category, baselineMonths);
-    const recentTotal = sumCategorySpend(transactions, category, recentMonths);
+    const baselineTotal = sumCategorySpend(expenseTransactions, category, baselineMonths);
+    const recentTotal = sumCategorySpend(expenseTransactions, category, recentMonths);
 
     if (baselineTotal <= 0) {
       continue;
     }
 
-    const baselineMonthlyCents = Math.round(baselineTotal / baselineMonths.length);
+    const baselineMonthlyCents = Math.round((baselineTotal / baselineMonths.length) * inflationFactor);
     const recentMonthlyCents = Math.round(recentTotal / recentMonths.length);
     const monthlyOverspendCents = Math.max(0, recentMonthlyCents - baselineMonthlyCents);
     const driftPercent =
@@ -252,7 +263,7 @@ function readRequiredCell(row: string[], headerIndex: Map<string, number>, heade
   return value.trim();
 }
 
-function parseAmountCents(value: string): number {
+function parseAmount(value: string): { amountCents: number; direction: "expense" | "income" } {
   const normalizedValue = value.replace(/[$,\s]/g, "");
   const amount = Number(normalizedValue);
 
@@ -260,7 +271,10 @@ function parseAmountCents(value: string): number {
     throw new Error(`Invalid amount: ${value}`);
   }
 
-  return Math.round(Math.abs(amount) * 100);
+  return {
+    amountCents: Math.round(Math.abs(amount) * 100),
+    direction: amount < 0 ? "expense" : "income"
+  };
 }
 
 function uniqueSortedMonths(transactions: DriftTransaction[]): string[] {
@@ -284,6 +298,30 @@ function sumCategorySpend(
         transaction.category === category && monthSet.has(transaction.transactionDate.slice(0, 7))
     )
     .reduce((total, transaction) => total + transaction.amountCents, 0);
+}
+
+function calculateInflationFactor(
+  baselineMonths: string[],
+  recentMonths: string[],
+  annualInflationRate: number
+): number {
+  if (annualInflationRate <= 0 || baselineMonths.length === 0 || recentMonths.length === 0) {
+    return 1;
+  }
+
+  const monthGap = Math.max(0, averageMonthIndex(recentMonths) - averageMonthIndex(baselineMonths));
+
+  return (1 + annualInflationRate) ** (monthGap / 12);
+}
+
+function averageMonthIndex(months: string[]): number {
+  const total = months.reduce((sum, month) => {
+    const [year = 0, monthIndex = 1] = month.split("-").map(Number);
+
+    return sum + year * 12 + monthIndex - 1;
+  }, 0);
+
+  return total / months.length;
 }
 
 function classifyDrift(driftPercent: number): DriftState {

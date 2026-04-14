@@ -5,6 +5,11 @@ import {
   type CategoryDrift,
   type DriftTransaction
 } from "@drift/core";
+import {
+  formatInflationRateLabel,
+  getDefaultInflationRate,
+  type InflationRateSnapshot
+} from "./inflation-rate";
 
 type CategoryStateLabel = "Stable" | "Watch" | "High drift" | "No longer active";
 type ScanState = "not_enough_data" | "contraction" | "stable" | "drift_detected";
@@ -41,6 +46,9 @@ export interface DriftScan {
   investmentGainLabel: string;
   redirectedSavingsCents: number;
   redirectedSavingsLabel: string;
+  annualInflationRate: number;
+  inflationRateLabel: string;
+  inflationSourceLabel: string;
   projectionScenario: ProjectionScenario;
   projectionScenarioLabel: string;
   baselineWindowLabel: string;
@@ -93,22 +101,25 @@ const DEFAULT_PROJECTION_SCENARIO: ProjectionScenario = {
 };
 
 export function buildDemoDriftScan(
-  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO
+  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO,
+  inflationRate: InflationRateSnapshot = getDefaultInflationRate()
 ): DriftScan {
-  return buildDriftScan(buildSeedTransactions(), "Demo data", projectionScenario);
+  return buildDriftScan(buildSeedTransactions(), "Demo data", projectionScenario, inflationRate);
 }
 
 export function buildEmptyDriftScan(
-  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO
+  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO,
+  inflationRate: InflationRateSnapshot = getDefaultInflationRate()
 ): DriftScan {
-  return buildDriftScan([], "No data yet", projectionScenario);
+  return buildDriftScan([], "No data yet", projectionScenario, inflationRate);
 }
 
 export function buildDriftScanFromCsv(
   csv: string,
-  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO
+  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO,
+  inflationRate: InflationRateSnapshot = getDefaultInflationRate()
 ): DriftScan {
-  return buildDriftScan(parseTransactionsCsv(csv), "Imported CSV", projectionScenario);
+  return buildDriftScan(parseTransactionsCsv(csv), "Imported CSV", projectionScenario, inflationRate);
 }
 
 export function buildDriftScanFromBackupSummary(
@@ -139,6 +150,9 @@ export function buildDriftScanFromBackupSummary(
     investmentGainLabel: formatCurrency(summary.investmentGainCents),
     redirectedSavingsCents: summary.redirectedSavingsCents,
     redirectedSavingsLabel: formatCurrency(summary.redirectedSavingsCents),
+    annualInflationRate: getDefaultInflationRate().annualRate,
+    inflationRateLabel: formatInflationRateLabel(getDefaultInflationRate().annualRate),
+    inflationSourceLabel: "Restored summary",
     projectionScenario,
     projectionScenarioLabel: formatProjectionScenario(projectionScenario),
     baselineWindowLabel: "Restored summary",
@@ -179,10 +193,14 @@ export function buildDriftScanFromBackupSummary(
 export function buildDriftScan(
   transactions: DriftTransaction[],
   sourceLabel: string,
-  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO
+  projectionScenario: ProjectionScenario = DEFAULT_PROJECTION_SCENARIO,
+  inflationRate: InflationRateSnapshot = getDefaultInflationRate()
 ): DriftScan {
   const windowSizes = chooseWindowSizes(transactions);
-  const analysis = analyzeDrift(transactions, windowSizes);
+  const analysis = analyzeDrift(transactions, {
+    ...windowSizes,
+    annualInflationRate: inflationRate.annualRate
+  });
   const newPatterns = buildNewPatterns(transactions, analysis.baselineMonths, analysis.recentMonths);
   const driftingCategories = analysis.categories.filter(
     (category) => category.monthlyOverspendCents > 0
@@ -209,6 +227,9 @@ export function buildDriftScan(
     investmentGainLabel: formatCurrency(counterfactual.projectedGainCents),
     redirectedSavingsCents: counterfactual.principalCents,
     redirectedSavingsLabel: formatCurrency(counterfactual.principalCents),
+    annualInflationRate: inflationRate.annualRate,
+    inflationRateLabel: formatInflationRateLabel(inflationRate.annualRate),
+    inflationSourceLabel: inflationRate.sourceLabel,
     projectionScenario,
     projectionScenarioLabel: formatProjectionScenario(projectionScenario),
     baselineWindowLabel: formatMonthWindow(analysis.baselineMonths),
@@ -454,7 +475,7 @@ function describeScanState(
   }
 
   const hasContraction = categories.some(
-    (category) => category.recentMonthlyCents < category.baselineMonthlyCents
+    (category) => category.recentMonthlyCents === 0 && category.baselineMonthlyCents > 0
   );
 
   if (hasContraction) {

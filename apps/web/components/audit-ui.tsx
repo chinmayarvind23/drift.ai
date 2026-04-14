@@ -180,7 +180,7 @@ export function PatternQuestion({ category = "Dining" }: { category?: string }) 
         <div className="absolute bottom-5 left-5 right-5">
           <p className="text-sm text-zinc-200">Pattern question</p>
           <h2 className="mt-2 text-2xl font-semibold leading-tight">
-            {category} started showing up more often. What changed around then?
+            {category} increased from the previous normal. What changed around then?
           </h2>
         </div>
       </div>

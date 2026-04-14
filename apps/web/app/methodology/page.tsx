@@ -29,9 +29,9 @@ export default function MethodologyPage() {
 
           <section>
             <h2 className="text-xl font-semibold">3. Calculate overspend</h2>
-            <pre className="mt-3 overflow-x-auto rounded-[8px] border border-border bg-background p-4 text-xs"><code>{`monthly overspend = max(0, recent monthly average - old monthly average)`}</code></pre>
+            <pre className="mt-3 overflow-x-auto rounded-[8px] border border-border bg-background p-4 text-xs"><code>{`monthly overspend = max(0, recent monthly average - inflation-adjusted old monthly average)`}</code></pre>
             <p className="mt-2 text-muted-foreground">
-              If recent spending is lower, overspend is zero. That category does not increase the Drift Score.
+              Drift uses the latest BLS CPI-U inflation rate when available. If the live rate cannot load, Drift falls back to a 3% annual assumption so the scan still works.
             </p>
           </section>
 

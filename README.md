@@ -10,7 +10,7 @@
 
 Drift.ai is a private AI lifestyle drift audit. It replaces the manual workflow of downloading bank transactions, building a spreadsheet, comparing old spending to recent spending, guessing what changed, and writing a plan by hand.
 
-The target user is an early-career professional who recently got a raise, new job, moved cities, or changed routines and now wonders why the extra money does not feel visible.
+The target user is an early-career professional who recently got a raise, new job, moved cities, or changed routines and now wonders why the extra money feels invisible.
 
 ## One Workflow Replaced
 
@@ -28,29 +28,67 @@ The target user is an early-career professional who recently got a raise, new jo
 **After Drift**
 
 1. Import a CSV.
-2. Drift detects old-normal vs recent-normal category changes.
+2. Drift detects inflation-adjusted old-normal vs recent-normal category changes.
 3. Pattern Lab uses local AI to interview the user about why the pattern started.
 4. Drift saves behavior tags and follow-up context.
 5. Intercept simulates a future repeat purchase and records intent.
-6. The report cites the scan facts, explains behavior, gives a 30-day recovery path, and exports/emails a PDF.
+6. The report cites the scan facts, explains behavior, gives a 30-day recovery path, and exports or emails a PDF.
 
 ## Why It Matters
 
 Budgeting apps show what someone spent. Drift shows what their spending became.
 
-The value is time saved, clearer behavior insight, and a paid private report that turns financial drift into a specific recovery path. The product is intentionally narrow: it is not a general finance dashboard and not an open-ended advice chatbot.
+The value is time saved, clearer behavior insight, and a paid private report that turns financial drift into a specific recovery path for a specific life-change moment.
+
+## Try It Out
+
+- Live app: https://drift-ai-lime.vercel.app
+- Local AI demo: run locally with Ollama using the setup below
+- Demo CSVs: `apps/web/tests/fixtures/`
+- Income and spending demo CSV: `apps/web/tests/fixtures/income-spend-drift.csv`
+
+For the strongest demo, run the app locally with Ollama. The deployed app proves hosting, auth, payment, and report flow; the local run proves private AI generation with Qwen.
+
+## Payment Proof
+
+Drift includes a $1 report unlock through Stripe Checkout. The paid deliverable is the private PDF report with the diagnosis, behavior explanation, 30-day recovery path, intercept result, privacy note, and cited scan facts.
+
+## Validation
+
+The MVP includes signup, report email capture, and a $1 checkout path so interest can be measured through account creation, report requests, and payment intent. Demo feedback should track whether users recognize the workflow, whether the report feels worth paying for, and whether they would try it with their own exported CSV.
 
 ## AI-Native Loop
 
 Drift uses deterministic math for trust and local AI for the behavior workflow.
 
-1. **Math finds the pattern.** The scan compares old-normal months with recent-normal months.
+1. **Math finds the pattern.** The scan compares old-normal months with recent-normal months after adjusting the old normal with the latest BLS CPI-U inflation rate when available. It falls back to 3% if the live rate cannot load.
 2. **AI interviews the user.** Pattern Lab asks why a flagged pattern started, then asks a follow-up question based on the answer and behavior tag.
 3. **AI classifies behavior.** Tags include reward spending, stress convenience, social pressure, habit creep, life event, and intentional upgrade.
 4. **AI writes recovery language.** Local Qwen through Ollama turns category, overspend, tag, answer, and follow-up context into a short recovery path.
 5. **AI writes the report.** The report review cites only scan facts, saved behavior notes, and intercept decisions.
 
-Raw transaction rows are not sent to cloud AI. The local demo uses Ollama/Qwen.
+Raw transaction rows stay local. The local demo uses Ollama/Qwen.
+
+## Cash Flow View
+
+Drift also maps cash flow from the imported CSV. Positive rows are treated as income, negative rows are treated as spending, and income is excluded from Drift Score math.
+
+The Scan page shows:
+
+- income vs spending bars by month
+- category spending mix
+- income change
+- spending change
+- the monthly overspend used to start the projection
+
+Use `apps/web/tests/fixtures/income-spend-drift.csv` to test this flow. Expected output:
+
+- Drift Score: `61`
+- Monthly overspend: `$94`
+- Top drift: `Dining`
+- New pattern to review: `Rides`
+- Income rises from `$4,200` to `$5,200`
+- Spending rises from `$1,860` to `$2,020`
 
 ## Data Sources And Citations
 
@@ -63,8 +101,11 @@ The demo uses user-provided CSV evidence or Plaid Sandbox transactions. Reports 
 - Category monthly overspend
 - Behavior tags
 - Intercept decisions
+- BLS CPI-U inflation rate used to adjust old-normal spending
 
-No external market data is currently used. The what-if scenario is a user-adjustable calculation, not a prediction or investment recommendation.
+The what-if scenario is a user-adjustable calculation for planning.
+
+Inflation adjustment uses the public BLS CPI-U series `CUUR0000SA0`. If the live request fails, Drift falls back to a 3% assumption and labels that fallback in the app.
 
 ## Stack
 
@@ -139,7 +180,7 @@ Supabase stores:
 - what-if settings
 - report email leads
 
-Supabase should not store raw merchant/date/sourceHash transaction rows.
+Supabase stores summaries and saved choices. Raw merchant/date/sourceHash transaction rows stay in the browser.
 
 ## Run Locally
 
@@ -147,6 +188,7 @@ Install dependencies:
 
 ```powershell
 npm install
+python -m pip install -r requirements.txt
 ```
 
 Start Ollama:

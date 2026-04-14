@@ -5,7 +5,7 @@ FastAPI service for Plaid sandbox integration and future backup/sync endpoints.
 ## Run
 
 ```powershell
-python -m pip install -e "apps/api[dev]"
+python -m pip install -r requirements.txt
 npm run dev:api
 ```
 

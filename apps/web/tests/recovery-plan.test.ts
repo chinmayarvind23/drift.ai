@@ -7,12 +7,12 @@ describe("buildRecoveryPlan", () => {
   it("turns the largest drift categories into a concrete monthly reset plan", () => {
     const plan = buildRecoveryPlan(buildDemoDriftScan(), {});
 
-    expect(plan.monthlyTargetLabel).toBe("$293");
-    expect(plan.annualTargetLabel).toBe("$3,514");
+    expect(plan.monthlyTargetLabel).toBe("$289");
+    expect(plan.annualTargetLabel).toBe("$3,472");
     expect(plan.steps).toHaveLength(3);
     expect(plan.steps[0]).toMatchObject({
       category: "Dining",
-      targetReductionLabel: "$168",
+      targetReductionLabel: "$167",
       actionLabel: "Reset 60% of this drift"
     });
   });

@@ -11,8 +11,8 @@ test("imports CSV and updates the Drift Scan dashboard", async ({ page }) => {
   await expect(page.getByText("Imported 12 transactions from sample-drift.csv.")).toBeVisible();
   await expect(page.getByText("Imported CSV")).toBeVisible();
   await expect(page.getByText("See where your spending quietly changed.")).toBeVisible();
-  await expect(page.getByText("$2,123")).toBeVisible();
-  await expect(page.getByText("$4,800 redirected from overspend")).toBeVisible();
+  await expect(page.getByText("$2,107")).toBeVisible();
+  await expect(page.getByText("$4,764 redirected from overspend")).toBeVisible();
   await expect(page.getByText("Old normal $20. Recent normal $60.")).toBeVisible();
   await expect(page.getByText("Each category is averaged by month first.")).toBeVisible();
   await page.getByLabel("How this is calculated").first().hover();
@@ -52,8 +52,8 @@ test("shows one Pattern Lab question for each flagged drift pattern", async ({ p
   await page.getByRole("link", { name: "Pattern Lab" }).click();
 
   await expect(page.getByText("Pattern question").first()).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Delivery moved into the recent normal/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Rides moved into the recent normal/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Delivery increased from the previous normal/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Rides increased from the previous normal/i })).toBeVisible();
 });
 
 test("opens Pattern Lab from the Add context prompt", async ({ page }) => {
@@ -91,7 +91,7 @@ test("edits evidence category and private note", async ({ page }) => {
 test("recalculates scan metrics after evidence category edits", async ({ page }) => {
   await importFixture(page, "sample-drift.csv");
 
-  await expect(page.getByText("$4,800 redirected from overspend")).toBeVisible();
+  await expect(page.getByText("$4,764 redirected from overspend")).toBeVisible();
   await page.getByRole("link", { name: "Transactions" }).click();
   await page.getByLabel("Search transactions").fill("2026-03-04");
   const barLuceRow = page.getByTestId("evidence-row").first();
@@ -101,7 +101,7 @@ test("recalculates scan metrics after evidence category edits", async ({ page })
   await expect(page.locator("dl div", { hasText: "Overspend" }).getByText("$20", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Scan" }).click();
 
-  await expect(page.getByText("$2,400 redirected from overspend")).toBeVisible();
+  await expect(page.getByText(/\$2,36\d redirected from overspend/)).toBeVisible();
   await expect(page.getByText("Old normal $20. Recent normal $40.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "New patterns to review" })).toBeVisible();
   await expect(page.getByText("Education").first()).toBeVisible();
@@ -111,7 +111,7 @@ test("recalculates scan metrics after evidence category edits", async ({ page })
 test("updates dashboard totals after moving a reward fixture transaction into another existing category", async ({ page }) => {
   await importFixture(page, "reward-dining-drift.csv");
 
-  await expect(page.getByText("$9,600 redirected from overspend")).toBeVisible();
+  await expect(page.getByText("$9,546 redirected from overspend")).toBeVisible();
   await page.getByRole("link", { name: "Transactions" }).click();
   await page.getByLabel("Search transactions").fill("2026-02-05");
   const metroMarketRow = page.getByTestId("evidence-row").first();
@@ -121,7 +121,7 @@ test("updates dashboard totals after moving a reward fixture transaction into an
 
   await page.getByRole("link", { name: "Scan" }).click();
   await expect(page.locator("div", { hasText: "Overspend" }).getByText("$213", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("$25,600 redirected from overspend")).toBeVisible();
+  await expect(page.getByText(/\$25,50\d redirected from overspend/)).toBeVisible();
   await expect(page.getByText("Old normal $20. Recent normal $153.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Rides" }).first()).toBeVisible();
 });

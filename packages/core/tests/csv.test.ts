@@ -13,7 +13,12 @@ describe("parseTransactionsCsv", () => {
       merchantName: "Cafe Alma",
       amountCents: 1842,
       category: "Dining",
+      direction: "expense",
       source: "csv"
+    });
+    expect(transactions[1]).toMatchObject({
+      amountCents: 4210,
+      direction: "income"
     });
     expect(transactions[0]?.sourceHash).toMatch(/^[a-f0-9]{64}$/);
   });

@@ -71,7 +71,7 @@ export async function buildFinancialReportInsight(
 
     return {
       label: mapReportLabel(topPatterns.length, input.scan?.monthlyOverspendCents ?? 0),
-      summary: isLowQualityFinancialReview(cleanedSummary)
+      summary: !cleanedSummary || isLowQualityFinancialReview(cleanedSummary)
         ? buildGroundedFinancialReview(input, topPatterns)
         : cleanedSummary,
       sources,
@@ -157,30 +157,44 @@ function buildGroundedFinancialReview(
     ].join("\n");
   }
 
-  const pattern = topPatterns[0];
-  const insight = input.behaviorInsights?.[pattern.category];
-  const decisions = (input.interceptDecisions ?? []).filter(
-    (decision) => decision.category === pattern.category
-  );
-  const annualOverspend = formatCurrency(pattern.monthlyOverspendCents * 12);
-  const noteText = insight
-    ? `Your note says "${insight.answer}"${insight.followUpAnswer ? `, and you added "${insight.followUpAnswer}"` : ""}.`
-    : "No Pattern Lab note is saved yet, so the why is still open.";
-  const decisionText = decisions.length > 0
-    ? buildDecisionText(decisions, pattern.category)
-    : "No Intercept choice is saved yet, so the report cannot tell whether the next purchase was intentional.";
+  const patternContexts = topPatterns.map((pattern) => {
+    const insight = input.behaviorInsights?.[pattern.category];
+    const decisions = (input.interceptDecisions ?? []).filter(
+      (decision) => decision.category === pattern.category
+    );
+    const annualOverspend = formatCurrency(pattern.monthlyOverspendCents * 12);
+    const noteText = insight
+      ? `Your note says "${insight.answer}"${insight.followUpAnswer ? `, with "${insight.followUpAnswer}" as the follow-up context` : ""}.`
+      : "No Pattern Lab note is saved yet, so the why is still open.";
+    const decisionText = decisions.length > 0
+      ? buildDecisionText(decisions, pattern.category)
+      : "No Intercept choice is saved yet, so the next purchase still needs a quick keep-or-cut decision.";
+
+    return {
+      pattern,
+      annualOverspend,
+      noteText,
+      decisionText
+    };
+  });
 
   return [
     "### What changed",
-    `- ${pattern.category} rose from ${pattern.baselineLabel} to ${pattern.recentLabel} per month, adding ${pattern.monthlyOverspendLabel}/month [${pattern.category} old ${pattern.baselineLabel} recent ${pattern.recentLabel}].`,
-    `- If it continues, that is about ${annualOverspend}/year of repeat spending to either keep on purpose or redirect.`,
+    ...patternContexts.flatMap(({ pattern, annualOverspend }) => [
+      `- ${pattern.category} rose from ${pattern.baselineLabel} to ${pattern.recentLabel} per month, adding ${pattern.monthlyOverspendLabel}/month [${pattern.category} old ${pattern.baselineLabel} recent ${pattern.recentLabel}].`,
+      `- If ${pattern.category} continues at this level, that is about ${annualOverspend}/year of repeat spending to either keep on purpose or redirect.`
+    ]),
     "### Why it may have happened",
-    `- ${noteText}`,
-    `- ${decisionText}`,
+    ...patternContexts.flatMap(({ pattern, noteText, decisionText }) => [
+      `- ${pattern.category}: ${noteText}`,
+      `- ${pattern.category}: ${decisionText}`
+    ]),
     "### What to do next",
-    `- This week, choose the one ${pattern.category} purchase that is worth keeping before anything new is bought.`,
-    `- For the next 30 days, use your follow-up answer as the default replacement when the same trigger shows up.`,
-    `- Keep the pattern if it still feels worth ${pattern.monthlyOverspendLabel}/month; cut the extra repeats if you would rather use that money elsewhere.`
+    ...patternContexts.flatMap(({ pattern }) => [
+      `- ${pattern.category}: this week, choose the one purchase that is worth keeping before anything new is bought.`,
+      `- ${pattern.category}: for the next 30 days, set one default fallback before the same trigger shows up again.`,
+      `- ${pattern.category}: keep the pattern if it still feels worth ${pattern.monthlyOverspendLabel}/month; cut the extra repeats if you would rather use that money elsewhere.`
+    ])
   ].join("\n");
 }
 

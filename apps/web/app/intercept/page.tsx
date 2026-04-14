@@ -51,10 +51,7 @@ export default function InterceptPage() {
   return (
     <section className="mx-auto grid max-w-7xl gap-6 px-5 py-6 md:grid-cols-[0.9fr_1.1fr] md:px-8 lg:py-8">
       <div className="surface-panel">
-        <Badge className="rounded-[8px] border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
-          Demo intercept
-        </Badge>
-        <h1 className="mt-4 text-3xl font-semibold">Spend intercept</h1>
+        <h1 className="text-3xl font-semibold">Spend intercept</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           Type a possible purchase. Drift checks whether it repeats a category that is already running high.
         </p>

@@ -70,6 +70,7 @@ async function buildReportPdfDocument(input: ReportPdfInput, jsPDF: JsPdfConstru
   ], y);
   y += 33;
 
+  y = writeScoreGuide(doc, y);
   y = writeSection(doc, "Executive Summary", normalizePdfLines([input.executiveSummary]), y + 6);
   if (input.financialReview?.trim()) {
     y = writeSection(doc, "Financial AI Review", normalizePdfLines([input.financialReview]), y + 2);
@@ -90,6 +91,24 @@ async function buildReportPdfDocument(input: ReportPdfInput, jsPDF: JsPdfConstru
   writeSection(doc, "Privacy Note", normalizePdfLines([input.privacyNote]), y + 2);
 
   return doc;
+}
+
+function writeScoreGuide(doc: JsPdfDocument, y: number): number {
+  const sectionY = ensurePageSpace(doc, y, 21);
+
+  doc.setFillColor?.(248, 250, 252);
+  doc.setDrawColor?.(226, 232, 240);
+  doc.roundedRect?.(14, sectionY, 182, 19, 3, 3, "FD");
+  doc.setTextColor?.(15, 23, 42);
+  doc.setFont?.("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.text("Score Guide", 18, sectionY + 6);
+  doc.setFont?.("helvetica", "normal");
+  doc.setTextColor?.(71, 85, 105);
+  doc.setFontSize(7.6);
+  doc.text("0 no repeated overspend  |  1-39 light  |  40-69 moderate  |  70-100 high", 18, sectionY + 14);
+
+  return sectionY + 21;
 }
 
 function paintHeader(doc: JsPdfDocument, logoDataUrl: string | null) {

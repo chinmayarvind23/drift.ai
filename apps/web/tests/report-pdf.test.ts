@@ -141,6 +141,54 @@ describe("exportReportPdf", () => {
     expect(attachment).toBe("AQID");
   });
 
+  it("writes the Drift Score guide before the executive summary", async () => {
+    const text = vi.fn();
+
+    await exportReportPdf(
+      {
+        scoreLabel: "71",
+        monthlyOverspendLabel: "$80",
+        investmentGainLabel: "$3,022",
+        executiveSummary: "Drift found one repeated spending pattern.",
+        recoverySteps: ["Dining: keep one planned dinner."],
+        interceptSummaries: [],
+        privacyNote: "Raw transactions stayed local."
+      },
+      async () => ({
+        jsPDF: class {
+          setFontSize = vi.fn();
+          setFont = vi.fn();
+          setTextColor = vi.fn();
+          setFillColor = vi.fn();
+          setDrawColor = vi.fn();
+          setLineWidth = vi.fn();
+          line = vi.fn();
+          roundedRect = vi.fn();
+          addImage = vi.fn();
+          text(...args: unknown[]) {
+            text(...args);
+          }
+          splitTextToSize(value: string) {
+            return [value];
+          }
+          save = vi.fn();
+          output() {
+            return new Uint8Array([1, 2, 3]).buffer;
+          }
+        }
+      })
+    );
+
+    const writtenText = text.mock.calls.map((call) => call[0]).flat();
+
+    expect(writtenText).toContain("Score Guide");
+    expect(writtenText.join("\n")).toContain("0 no repeated overspend");
+    expect(writtenText.join("\n")).toContain("1-39 light");
+    expect(writtenText.join("\n")).toContain("40-69 moderate");
+    expect(writtenText.join("\n")).toContain("70-100 high");
+    expect(writtenText.indexOf("Score Guide")).toBeLessThan(writtenText.indexOf("Executive Summary"));
+  });
+
   it("adds pages instead of cutting off long reports", async () => {
     const addPage = vi.fn();
     const text = vi.fn();
