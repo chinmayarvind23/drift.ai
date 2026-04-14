@@ -8,6 +8,10 @@
   Private AI lifestyle drift audits for people who want to know where the extra money went.
 </p>
 
+<p align="center">
+  <a href="https://youtu.be/IvfGUKCkWuE?si=iAnS7_1s4fM2Eadb">Link to the demo</a>
+</p>
+
 Drift.ai is a private AI lifestyle drift audit. It replaces the manual workflow of downloading bank transactions, building a spreadsheet, comparing old spending to recent spending, guessing what changed, and writing a plan by hand.
 
 The target user is an early-career professional who recently got a raise, new job, moved cities, or changed routines and now wonders why the extra money feels invisible.
