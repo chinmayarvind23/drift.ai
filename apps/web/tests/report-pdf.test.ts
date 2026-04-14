@@ -50,8 +50,9 @@ describe("exportReportPdf", () => {
     );
 
     expect(addImage).toHaveBeenCalled();
+    expect(addImage).toHaveBeenCalledWith(expect.any(String), "JPEG", 20, 16, 29, 16);
     expect(roundedRect).toHaveBeenCalled();
-    expect(text).toHaveBeenCalledWith("Drift Scan Report", 42, 22);
+    expect(text).toHaveBeenCalledWith("Drift Scan Report", 54, 22);
     expect(save).toHaveBeenCalledWith("drift-scan-report.pdf");
   });
 

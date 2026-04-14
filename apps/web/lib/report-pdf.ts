@@ -97,7 +97,7 @@ function paintHeader(doc: JsPdfDocument, logoDataUrl: string | null) {
   doc.roundedRect?.(14, 12, 182, 36, 4, 4, "F");
 
   if (logoDataUrl) {
-    doc.addImage?.(logoDataUrl, "JPEG", 20, 16, 16, 16);
+    doc.addImage?.(logoDataUrl, "JPEG", 20, 16, 29, 16);
   } else {
     doc.setFillColor?.(16, 185, 129);
     doc.roundedRect?.(20, 16, 16, 16, 3, 3, "F");
@@ -110,11 +110,11 @@ function paintHeader(doc: JsPdfDocument, logoDataUrl: string | null) {
   doc.setTextColor?.(15, 23, 42);
   doc.setFont?.("helvetica", "bold");
   doc.setFontSize(17);
-  doc.text("Drift Scan Report", 42, 22);
+  doc.text("Drift Scan Report", 54, 22);
   doc.setFont?.("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor?.(71, 85, 105);
-  doc.text("Private lifestyle drift audit", 42, 29);
+  doc.text("Private lifestyle drift audit", 54, 29);
 }
 
 function paintMetricCards(
