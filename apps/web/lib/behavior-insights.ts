@@ -112,6 +112,18 @@ export function classifyBehaviorAnswer(answer: string): BehaviorTag {
   );
 }
 
+export function resolveBehaviorTagForSave(
+  selectedTag: BehaviorTag,
+  answer: string,
+  followUpAnswer: string
+): BehaviorTag {
+  if (selectedTag !== "unknown") {
+    return selectedTag;
+  }
+
+  return classifyBehaviorAnswer(`${answer} ${followUpAnswer}`);
+}
+
 function summarizeBehavior(
   category: string,
   answer: string,

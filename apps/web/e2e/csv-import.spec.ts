@@ -107,6 +107,24 @@ test("recalculates scan metrics after evidence category edits", async ({ page })
   await expect(page.getByText("New pattern, not Drift").first()).toBeVisible();
 });
 
+test("updates dashboard totals after moving a reward fixture transaction into another existing category", async ({ page }) => {
+  await importFixture(page, "reward-dining-drift.csv");
+
+  await expect(page.getByText("$9,600 redirected from overspend")).toBeVisible();
+  await page.getByRole("link", { name: "Transactions" }).click();
+  await page.getByLabel("Search transactions").fill("2026-02-05");
+  const metroMarketRow = page.getByTestId("evidence-row").first();
+
+  await metroMarketRow.getByLabel("Category").selectOption("Rides");
+  await expect(page.locator("dl div", { hasText: "Overspend" }).getByText("$213", { exact: true })).toBeVisible();
+
+  await page.getByRole("link", { name: "Scan" }).click();
+  await expect(page.locator("div", { hasText: "Overspend" }).getByText("$213", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("$25,600 redirected from overspend")).toBeVisible();
+  await expect(page.getByText("Old normal $20. Recent normal $153.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Rides" }).first()).toBeVisible();
+});
+
 test("recalculates when an already edited category is edited again", async ({ page }) => {
   await importFixture(page, "sample-drift.csv");
 
@@ -219,6 +237,30 @@ test("saves a Pattern Lab Pattern label and includes it in the report", async ({
   await expect(page.getByText(/Source: Drift Score/i)).toBeVisible();
 });
 
+test("saves a Pattern Lab insight from follow-up without toggling the label", async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as {
+      __DRIFT_AI_CLASSIFIER__: () => Promise<{ labels: string[]; scores: number[] }>;
+    }).__DRIFT_AI_CLASSIFIER__ = async () => ({
+      labels: ["needs review", "habit creep", "stress convenience"],
+      scores: [0.8, 0.12, 0.08]
+    });
+  });
+  await importFixture(page, "reward-dining-drift.csv");
+
+  await page.getByRole("link", { name: "Pattern Lab" }).click();
+  await page.getByLabel("Your private answer").fill("got promoted");
+  await page.getByRole("button", { name: "Suggest pattern label" }).click();
+
+  await expect(page.getByLabel("Pattern label")).toHaveValue("unknown");
+  await page.getByLabel("AI follow-up answer").fill("reward");
+  await expect(page.getByLabel("Pattern label")).toHaveValue("reward_spending");
+  await page.getByRole("button", { name: "Save insight" }).click();
+
+  await expect(page.locator("span").filter({ hasText: "Reward spending" })).toBeVisible();
+  await expect(page.getByText(/Dining is tagged as reward spending/i)).toBeVisible();
+});
+
 test("simulates and saves a spend intercept decision", async ({ page }) => {
   await importFixture(page, "sample-drift.csv");
 
@@ -306,10 +348,13 @@ test("keeps account and paid report surfaces product-native", async ({ page }) =
 
   await page.getByRole("link", { name: "Report" }).click();
   await expect(page.getByRole("heading", { name: "Executive summary" })).toBeVisible();
+  await expect(page.getByText("Executive summary is locked")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Top 3 drift patterns" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "New patterns to review" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "AI behavior explanation" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "30-day recovery path" })).toBeVisible();
+  await expect(page.getByText("30-day recovery path is locked")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Sign up to unlock" })).toHaveCount(2);
   await expect(page.getByText("Sign in to generate this report").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Export PDF" })).toHaveCount(0);
   await expect(page.getByText("Pay $1 to unlock report")).toHaveCount(0);

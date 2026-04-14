@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { parseTransactionsCsv } from "@drift/core";
 import { buildDriftScan } from "../lib/drift-scan";
 import { applyTransactionEdits, type TransactionEdit } from "../lib/transaction-edits";
 import type { DriftTransaction } from "@drift/core";
@@ -71,5 +73,36 @@ describe("applyTransactionEdits", () => {
 
     expect(originalScan.monthlyOverspendCents).toBe(20_000);
     expect(editedScan.monthlyOverspendCents).toBe(0);
+  });
+
+  it("recalculates reward fixture overspend when a recent grocery transaction is moved to rides", () => {
+    const csv = readFileSync(new URL("./fixtures/reward-dining-drift.csv", import.meta.url), "utf8");
+    const transactions = parseTransactionsCsv(csv);
+    const metroMarketFebruary = transactions.find(
+      (item) => item.merchantName === "Metro Market" && item.transactionDate === "2026-02-05"
+    );
+
+    expect(metroMarketFebruary).toBeDefined();
+
+    const editedTransactions = applyTransactionEdits(transactions, {
+      [metroMarketFebruary!.sourceHash]: {
+        category: "Rides"
+      }
+    });
+    const originalScan = buildDriftScan(transactions, "Imported CSV");
+    const editedScan = buildDriftScan(editedTransactions, "Imported CSV");
+
+    expect(originalScan.monthlyOverspendLabel).toBe("$80");
+    expect(editedScan.monthlyOverspendLabel).toBe("$213");
+    expect(editedScan.topCategories[0]).toMatchObject({
+      category: "Rides",
+      baselineLabel: "$20",
+      recentLabel: "$153",
+      monthlyOverspendLabel: "$133"
+    });
+    expect(editedScan.topCategories[1]).toMatchObject({
+      category: "Dining",
+      monthlyOverspendLabel: "$80"
+    });
   });
 });

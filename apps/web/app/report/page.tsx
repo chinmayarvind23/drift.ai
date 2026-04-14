@@ -8,6 +8,7 @@ import { useAuditWorkspace } from "@/components/audit-workspace";
 import { LeadCapture } from "@/components/lead-capture";
 import { MarkdownBlock } from "@/components/markdown-block";
 import { PaymentButton } from "@/components/payment-button";
+import { ReportSectionLock } from "@/components/report-section-lock";
 import { InfoHint } from "@/components/audit-ui";
 import {
   buildFinancialReportInsight,
@@ -156,37 +157,39 @@ export default function ReportPage() {
           <ReportMetric label="What-if growth" value={scan.investmentGainLabel} />
         </div>
 
-        <div className="mt-7 rounded-[8px] border border-primary/20 bg-primary/5 p-5">
-          <h2 className="text-xl font-semibold">Executive summary</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {reportSummary.executiveSummary}
-          </p>
-          <div className="mt-4 rounded-[8px] border border-border bg-background p-4 text-sm">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="font-semibold">Financial AI review</p>
-                <div className="mt-2">
-                  <MarkdownBlock text={financialInsight?.summary ?? "Reviewing the report summary locally..."} />
+        <ReportSectionLock sectionName="Executive summary">
+          <div className="mt-7 rounded-[8px] border border-primary/20 bg-primary/5 p-5">
+            <h2 className="text-xl font-semibold">Executive summary</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {reportSummary.executiveSummary}
+            </p>
+            <div className="mt-4 rounded-[8px] border border-border bg-background p-4 text-sm">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="font-semibold">Financial AI review</p>
+                  <div className="mt-2">
+                    <MarkdownBlock text={financialInsight?.summary ?? "Reviewing the report summary locally..."} />
+                  </div>
+                  {financialInsight ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {describeFinancialReportModel(financialInsight)}
+                    </p>
+                  ) : null}
+                  {financialInsight?.sources.length ? (
+                    <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+                      {financialInsight.sources.slice(0, 6).map((source) => (
+                        <li key={source}>Source: {source}</li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </div>
-                {financialInsight ? (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {describeFinancialReportModel(financialInsight)}
-                  </p>
-                ) : null}
-                {financialInsight?.sources.length ? (
-                  <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-                    {financialInsight.sources.slice(0, 6).map((source) => (
-                      <li key={source}>Source: {source}</li>
-                    ))}
-                  </ul>
-                ) : null}
+                <Badge className="w-fit rounded-[8px] border-border bg-card text-muted-foreground">
+                  {financialInsight?.label ?? "Reviewing"}
+                </Badge>
               </div>
-              <Badge className="w-fit rounded-[8px] border-border bg-card text-muted-foreground">
-                {financialInsight?.label ?? "Reviewing"}
-              </Badge>
             </div>
           </div>
-        </div>
+        </ReportSectionLock>
 
         <div className="mt-7 space-y-3">
           <h2 className="text-xl font-semibold">Top 3 drift patterns</h2>
@@ -229,31 +232,33 @@ export default function ReportPage() {
           )}
         </div>
 
-        <div className="mt-7 rounded-[8px] border border-primary/20 bg-primary/5 p-5">
-          <h2 className="text-xl font-semibold">30-day recovery path</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Drift uses your Pattern Lab answer to suggest one small reset for the next month. The goal is to keep what feels worth it and reduce the repeat purchases you no longer want.
-          </p>
-          <div className="mt-4 space-y-3">
-            {recoveryPlan.steps.length > 0 ? recoveryPlan.steps.map((step) => (
-              <div key={step.category} className="rounded-[8px] border border-border bg-background p-4 text-sm">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="font-semibold">{step.category} · {step.behaviorTagLabel}</p>
-                    <p className="mt-2 leading-6 text-muted-foreground">{step.prompt}</p>
-                    <div className="mt-2">
-                      <MarkdownBlock text={localRecoveryPaths[step.category]?.text ?? step.aiRecoveryPath} />
+        <ReportSectionLock sectionName="30-day recovery path">
+          <div className="mt-7 rounded-[8px] border border-primary/20 bg-primary/5 p-5">
+            <h2 className="text-xl font-semibold">30-day recovery path</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Drift uses your Pattern Lab answer to suggest one small reset for the next month. The goal is to keep what feels worth it and reduce the repeat purchases you no longer want.
+            </p>
+            <div className="mt-4 space-y-3">
+              {recoveryPlan.steps.length > 0 ? recoveryPlan.steps.map((step) => (
+                <div key={step.category} className="rounded-[8px] border border-border bg-background p-4 text-sm">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-semibold">{step.category} · {step.behaviorTagLabel}</p>
+                      <p className="mt-2 leading-6 text-muted-foreground">{step.prompt}</p>
+                      <div className="mt-2">
+                        <MarkdownBlock text={localRecoveryPaths[step.category]?.text ?? step.aiRecoveryPath} />
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">{step.whyItHelps}</p>
                     </div>
-                    <p className="mt-2 text-xs text-muted-foreground">{step.whyItHelps}</p>
+                    <p className="font-semibold">{step.targetReductionLabel}</p>
                   </div>
-                  <p className="font-semibold">{step.targetReductionLabel}</p>
                 </div>
-              </div>
-            )) : (
-              <p className="text-sm leading-6 text-muted-foreground">No recovery path needed while the scan is steady.</p>
-            )}
+              )) : (
+                <p className="text-sm leading-6 text-muted-foreground">No recovery path needed while the scan is steady.</p>
+              )}
+            </div>
           </div>
-        </div>
+        </ReportSectionLock>
 
         <div className="mt-7 grid gap-6 md:grid-cols-2">
           <section>

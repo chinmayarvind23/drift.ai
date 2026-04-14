@@ -67,7 +67,7 @@ export default function ScanPage() {
             label="If saved and invested"
             value={scan.investmentGainLabel}
             tone="emerald"
-            explanation={`This is the estimated investment growth above the money redirected from overspend. At 0% return, the growth is $0. Current scenario: ${scan.projectionScenarioLabel}.`}
+            explanation={`This is the estimated growth above the money redirected from overspend. It changes with the What-if scenario: ${scan.projectionScenarioLabel}.`}
             detail={`${scan.redirectedSavingsLabel} redirected from overspend`}
           />
         </div>

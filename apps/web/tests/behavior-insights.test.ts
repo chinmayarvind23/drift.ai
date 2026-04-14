@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBehaviorInsight, classifyBehaviorAnswer } from "../lib/behavior-insights";
+import { buildBehaviorInsight, classifyBehaviorAnswer, resolveBehaviorTagForSave } from "../lib/behavior-insights";
 
 describe("behavior insights", () => {
   it("classifies reward spending before saving a private insight", () => {
@@ -22,5 +22,11 @@ describe("behavior insights", () => {
       "stress_convenience"
     );
     expect(classifyBehaviorAnswer("")).toBe("unknown");
+  });
+
+  it("uses the follow-up answer when saving an initially unclear insight", () => {
+    expect(resolveBehaviorTagForSave("unknown", "got promoted", "reward")).toBe("reward_spending");
+    expect(resolveBehaviorTagForSave("unknown", "got promoted", "social plans")).toBe("social_pressure");
+    expect(resolveBehaviorTagForSave("intentional_upgrade", "got promoted", "reward")).toBe("intentional_upgrade");
   });
 });

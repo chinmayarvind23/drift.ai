@@ -8,6 +8,8 @@ import { describeInsightModel } from "@/lib/ai-behavior-insights";
 import {
   BEHAVIOR_TAG_OPTIONS,
   buildBehaviorInsight,
+  getBehaviorTagLabel,
+  resolveBehaviorTagForSave,
   type BehaviorInsight,
   type BehaviorTag
 } from "@/lib/behavior-insights";
@@ -91,12 +93,24 @@ export default function InsightsPage() {
   function saveEditedInsight(category: string) {
     const state = getQuestionState(category);
 
-    if (!state.draftInsight || state.selectedTag === "unknown") {
+    if (!state.draftInsight) {
+      return;
+    }
+    const resolvedTag = resolveBehaviorTagForSave(
+      state.selectedTag,
+      state.answer,
+      state.followUpAnswer
+    );
+
+    if (resolvedTag === "unknown") {
+      updateQuestionState(category, {
+        statusMessage: "Choose the closest pattern label before saving."
+      });
       return;
     }
 
     const insight = buildBehaviorInsight(category, state.answer, state.draftInsight.createdAt, {
-      tag: state.selectedTag,
+      tag: resolvedTag,
       confidence: null,
       modelProvider: state.draftInsight.modelProvider,
       modelName: state.draftInsight.modelName,
@@ -107,6 +121,7 @@ export default function InsightsPage() {
     saveBehaviorInsight(insight);
     updateQuestionState(category, {
       draftInsight: insight,
+      selectedTag: resolvedTag,
       statusMessage: "Insight saved locally. Sync from Account when you want it backed up."
     });
   }
@@ -136,7 +151,21 @@ export default function InsightsPage() {
                   statusMessage: null
                 })}
                 onClassify={() => classifyAnswer(pattern.category)}
-                onFollowUpAnswerChange={(followUpAnswer) => updateQuestionState(pattern.category, { followUpAnswer })}
+                onFollowUpAnswerChange={(followUpAnswer) => {
+                  const state = getQuestionState(pattern.category);
+                  const resolvedTag = resolveBehaviorTagForSave(
+                    state.selectedTag,
+                    state.answer,
+                    followUpAnswer
+                  );
+
+                  updateQuestionState(pattern.category, {
+                    followUpAnswer,
+                    ...(state.selectedTag === "unknown" && resolvedTag !== "unknown"
+                      ? { selectedTag: resolvedTag }
+                      : {})
+                  });
+                }}
                 onSave={() => saveEditedInsight(pattern.category)}
                 onSelectedTagChange={(selectedTag) => updateQuestionState(pattern.category, { selectedTag })}
               />
@@ -247,6 +276,9 @@ function PatternQuestion({
               value={state.selectedTag}
               onChange={(event) => onSelectedTagChange(event.target.value as BehaviorTag)}
             >
+              {state.selectedTag === "unknown" ? (
+                <option value="unknown">{getBehaviorTagLabel("unknown")}</option>
+              ) : null}
               {BEHAVIOR_TAG_OPTIONS.map((option) => (
                 <option key={option.tag} value={option.tag}>
                   {option.label}

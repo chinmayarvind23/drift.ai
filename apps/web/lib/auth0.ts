@@ -78,6 +78,7 @@ export const auth0 = auth0Config
       clientSecret: auth0Config.clientSecret,
       secret: auth0Config.secret,
       signInReturnToPath: "/",
+      logoutStrategy: "v2",
       onCallback
     })
   : null;

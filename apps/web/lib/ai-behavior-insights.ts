@@ -133,13 +133,35 @@ function getInjectedBehaviorTagger(): BehaviorTagger | null {
   if (windowWithTaggers.__DRIFT_AI_CLASSIFIER__) {
     return async () => {
       const result = await windowWithTaggers.__DRIFT_AI_CLASSIFIER__?.();
-      const label = result?.labels[0]?.toLowerCase().replace(/\s+/g, "_") as BehaviorTag | undefined;
+      const label = normalizeClassifierLabel(result?.labels[0]);
 
       return {
         tag: label ?? "unknown",
         provider: "ollama"
       };
     };
+  }
+
+  return null;
+}
+
+function normalizeClassifierLabel(label: string | undefined): BehaviorTag | null {
+  const normalizedLabel = label?.toLowerCase().replace(/[\s-]+/g, "_");
+
+  if (!normalizedLabel || normalizedLabel === "needs_review") {
+    return "unknown";
+  }
+
+  if (
+    normalizedLabel === "reward_spending" ||
+    normalizedLabel === "stress_convenience" ||
+    normalizedLabel === "social_pressure" ||
+    normalizedLabel === "habit_creep" ||
+    normalizedLabel === "life_event" ||
+    normalizedLabel === "intentional_upgrade" ||
+    normalizedLabel === "unknown"
+  ) {
+    return normalizedLabel;
   }
 
   return null;

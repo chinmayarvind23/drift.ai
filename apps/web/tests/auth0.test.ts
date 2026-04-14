@@ -31,13 +31,16 @@ describe("auth navigation", () => {
   it("builds explicit app return targets for Auth0 actions", () => {
     expect(buildAuthActionHref("login")).toBe("/auth/login?returnTo=%2F");
     expect(buildAuthActionHref("signup")).toBe(
-      "/auth/login?returnTo=%2F&screen_hint=signup"
+      "/auth/login?returnTo=%2F&screen_hint=signup&prompt=login&max_age=0"
     );
     expect(buildAuthActionHref("google")).toBe(
       "/auth/login?returnTo=%2F&connection=google-oauth2"
     );
+    expect(buildAuthActionHref("signup", "/", "https://drift.ai")).toBe(
+      "https://drift.ai/auth/login?returnTo=%2F&screen_hint=signup&prompt=login&max_age=0"
+    );
     expect(buildAuthActionHref("logout", "/account", "http://localhost:3000")).toBe(
-      "/auth/logout?returnTo=http%3A%2F%2Flocalhost%3A3000%2Faccount"
+      "http://localhost:3000/auth/logout?returnTo=http%3A%2F%2Flocalhost%3A3000%2F"
     );
   });
 

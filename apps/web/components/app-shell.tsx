@@ -7,7 +7,9 @@ import type { ReactNode } from "react";
 import { Moon, Sun } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AccountProfileBootstrap } from "@/components/account-profile-bootstrap";
 import { useAuditWorkspace } from "@/components/audit-workspace";
+import { LogoutLocalClear } from "@/components/logout-local-clear";
 import { useTheme } from "@/components/theme-provider";
 import driftLogo from "@/figs/drift-ai.jpeg";
 
@@ -30,6 +32,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
+      <AccountProfileBootstrap />
+      <LogoutLocalClear />
       <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 px-5 py-4 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4">
           <div className="flex items-center justify-between gap-4">

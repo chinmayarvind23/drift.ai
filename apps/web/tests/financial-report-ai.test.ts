@@ -66,6 +66,70 @@ describe("buildFinancialReportInsight", () => {
     expect(insight.modelProvider).toBe("unavailable");
     expect(insight.summary).toMatch(/Local AI is not running/i);
   });
+
+  it("replaces prompt-echoing AI output with a grounded user-facing review", async () => {
+    const scan = buildDemoDriftScan();
+    const insight = await buildFinancialReportInsight(
+      {
+        executiveSummary: "Drift found repeated overspending.",
+        monthlyOverspendLabel: "$80",
+        scan,
+        topPatterns: [{
+          ...scan.topCategories[0],
+          category: "Dining",
+          baselineLabel: "$30",
+          recentLabel: "$110",
+          monthlyOverspendLabel: "$80",
+          monthlyOverspendCents: 8000
+        }],
+        behaviorInsights: {
+          Dining: buildBehaviorInsight(
+            "Dining",
+            "got promoted",
+            "2026-04-12T10:00:00.000Z",
+            {
+              tag: "reward_spending",
+              confidence: null,
+              modelProvider: "ollama",
+              modelName: "qwen",
+              followUpAnswer: "reward"
+            }
+          )
+        },
+        interceptDecisions: [{
+          id: "intercept-1",
+          category: "Dining",
+          merchantName: "Bar",
+          amountLabel: "$50",
+          amountCents: 5000,
+          decision: "intentional",
+          createdAt: "2026-04-12T10:00:00.000Z",
+          flagged: true,
+          reason: "reason",
+          ahaMessage: "message",
+          nextMove: "next",
+          driftPercentLabel: "267%",
+          monthlyOverspendLabel: "$80",
+          insightLabel: "Reward spending"
+        }]
+      },
+      async () => new Response(JSON.stringify({
+        summary: [
+          "### What changed",
+          "Compare old normal to recent normal with a bracketed scan citation.",
+          "you changed their consumption habits and now spends an additional $80 daily above the old normal.",
+          "### What to do next",
+          "Give one friction-removal step for the next 7 days."
+        ].join("\n"),
+        model: "qwen2.5:0.5b"
+      }), { status: 200 }) as Response
+    );
+
+    expect(insight.summary).toContain("Dining rose from $30 to $110 per month");
+    expect(insight.summary).toContain("[Dining old $30 recent $110]");
+    expect(insight.summary).toContain("got promoted");
+    expect(insight.summary).not.toMatch(/Compare old normal|Give one friction|their|daily/i);
+  });
 });
 
 describe("cleanFinancialReportSummary", () => {

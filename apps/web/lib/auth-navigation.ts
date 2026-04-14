@@ -26,8 +26,9 @@ export function buildAuthActionHref(
   const safeReturnTo = normalizeAuthReturnTo(returnTo);
 
   if (action === "logout") {
-    const logoutReturnTo = origin ? new URL(safeReturnTo, origin).toString() : safeReturnTo;
-    return `/auth/logout?returnTo=${encodeURIComponent(logoutReturnTo)}`;
+    const logoutReturnTo = origin ? new URL(DEFAULT_AUTH_RETURN_TO, origin).toString() : DEFAULT_AUTH_RETURN_TO;
+    const logoutPath = `/auth/logout?returnTo=${encodeURIComponent(logoutReturnTo)}`;
+    return origin ? new URL(logoutPath, origin).toString() : logoutPath;
   }
 
   const params = new URLSearchParams({
@@ -36,13 +37,16 @@ export function buildAuthActionHref(
 
   if (action === "signup") {
     params.set("screen_hint", "signup");
+    params.set("prompt", "login");
+    params.set("max_age", "0");
   }
 
   if (action === "google") {
     params.set("connection", "google-oauth2");
   }
 
-  return `/auth/login?${params.toString()}`;
+  const loginPath = `/auth/login?${params.toString()}`;
+  return origin ? new URL(loginPath, origin).toString() : loginPath;
 }
 
 export function buildPostAuthRedirectUrl(

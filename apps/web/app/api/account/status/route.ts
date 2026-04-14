@@ -20,22 +20,33 @@ export async function GET() {
   const supabase = createSupabaseServiceClient();
   const profile = buildAccountProfile(session.user);
 
-  if (supabase) {
-    const { error } = await supabase.from("profiles").upsert(profile, {
-      onConflict: "user_id"
-    });
+  if (!supabase) {
+    return NextResponse.json(
+      {
+        signedIn: true,
+        hasAccount: false,
+        email: session.user.email ?? null,
+        name: session.user.name ?? null,
+        error: "Supabase server keys are not configured."
+      },
+      { status: 503 }
+    );
+  }
 
-    if (error) {
-      return NextResponse.json(
-        {
-          signedIn: true,
-          hasAccount: false,
-          email: session.user.email ?? null,
-          error: error.message
-        },
-        { status: 500 }
-      );
-    }
+  const { error } = await supabase.from("profiles").upsert(profile, {
+    onConflict: "user_id"
+  });
+
+  if (error) {
+    return NextResponse.json(
+      {
+        signedIn: true,
+        hasAccount: false,
+        email: session.user.email ?? null,
+        error: error.message
+      },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({

@@ -67,9 +67,13 @@ export async function buildFinancialReportInsight(
       throw new Error("Local report AI returned no summary.");
     }
 
+    const cleanedSummary = cleanFinancialReportSummary(body.summary);
+
     return {
       label: mapReportLabel(topPatterns.length, input.scan?.monthlyOverspendCents ?? 0),
-      summary: cleanFinancialReportSummary(body.summary),
+      summary: isLowQualityFinancialReview(cleanedSummary)
+        ? buildGroundedFinancialReview(input, topPatterns)
+        : cleanedSummary,
       sources,
       modelProvider: "ollama",
       modelName: body.model ?? "qwen-local"
@@ -100,6 +104,10 @@ export function cleanFinancialReportSummary(summary: string): string {
     .filter(Boolean)
     .filter((line) => !/^one bullet\b/i.test(line))
     .filter((line) => !/^one concrete\b/i.test(line))
+    .filter((line) => !/^compare old normal\b/i.test(line))
+    .filter((line) => !/^connect the behavior\b/i.test(line))
+    .filter((line) => !/^explain whether\b/i.test(line))
+    .filter((line) => !/^give one\b/i.test(line))
     .filter((line) => !/^bullet \d\b/i.test(line))
     .filter((line) => !/^reason:/i.test(line))
     .filter((line) => !/^future scenarios/i.test(line))
@@ -108,10 +116,72 @@ export function cleanFinancialReportSummary(summary: string): string {
       .replace(/\bthe user's\b/gi, "your")
       .replace(/\bthe user’s\b/gi, "your")
       .replace(/\bthe user\b/gi, "you")
+      .replace(/\byou changed their\b/gi, "your")
+      .replace(/\byour spending habits have\b/gi, "your spending has")
+      .replace(/\btheir\b/gi, "your")
+      .replace(/\bthey\b/gi, "you")
+      .replace(/\bthem\b/gi, "you")
       .replace(/\bUser Behavior\b/g, "What your note suggests")
       .replace(/\bUser context\b/g, "Your context"))
     .join("\n")
     .trim();
+}
+
+function isLowQualityFinancialReview(summary: string): boolean {
+  return [
+    /compare old normal/i,
+    /connect the behavior/i,
+    /explain whether/i,
+    /give one/i,
+    /\btheir\b/i,
+    /\bthey\b/i,
+    /\bdaily\b/i,
+    /budget-related issue/i,
+    /financial integrity/i,
+    /automatic override/i
+  ].some((pattern) => pattern.test(summary));
+}
+
+function buildGroundedFinancialReview(
+  input: FinancialReportInput,
+  topPatterns: DriftScanCategory[]
+): string {
+  if (topPatterns.length === 0) {
+    return [
+      "### What changed",
+      "- Drift did not find repeated overspending in this scan.",
+      "### Why it may have happened",
+      "- Your recent spending stayed close to the earlier monthly average.",
+      "### What to do next",
+      "- No reset is needed right now. Keep using Transactions to fix categories if something looks wrong."
+    ].join("\n");
+  }
+
+  const pattern = topPatterns[0];
+  const insight = input.behaviorInsights?.[pattern.category];
+  const decisions = (input.interceptDecisions ?? []).filter(
+    (decision) => decision.category === pattern.category
+  );
+  const annualOverspend = formatCurrency(pattern.monthlyOverspendCents * 12);
+  const noteText = insight
+    ? `Your note says "${insight.answer}"${insight.followUpAnswer ? `, and you added "${insight.followUpAnswer}"` : ""}.`
+    : "No Pattern Lab note is saved yet, so the why is still open.";
+  const decisionText = decisions.length > 0
+    ? `Your Intercept choice for ${decisions[0].merchantName} was marked ${decisions[0].decision}, so this looks like a pattern to choose deliberately rather than ignore.`
+    : "No Intercept choice is saved yet, so the report cannot tell whether the next purchase was intentional.";
+
+  return [
+    "### What changed",
+    `- ${pattern.category} rose from ${pattern.baselineLabel} to ${pattern.recentLabel} per month, adding ${pattern.monthlyOverspendLabel}/month [${pattern.category} old ${pattern.baselineLabel} recent ${pattern.recentLabel}].`,
+    `- If it continues, that is about ${annualOverspend}/year of repeat spending to either keep on purpose or redirect.`,
+    "### Why it may have happened",
+    `- ${noteText}`,
+    `- ${decisionText}`,
+    "### What to do next",
+    `- This week, choose the one ${pattern.category} purchase that is worth keeping before anything new is bought.`,
+    `- For the next 30 days, use your follow-up answer as the default replacement when the same trigger shows up.`,
+    `- Keep the pattern if it still feels worth ${pattern.monthlyOverspendLabel}/month; cut the extra repeats if you would rather use that money elsewhere.`
+  ].join("\n");
 }
 
 export function buildFinancialReportSources(
@@ -166,4 +236,12 @@ function buildUnavailableSummary(
     .join("; ");
 
   return `Local AI is not running yet. The available data still shows ${input.monthlyOverspendLabel}/month in repeated overspend: ${patternText}.`;
+}
+
+function formatCurrency(cents: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0
+  }).format(cents / 100);
 }

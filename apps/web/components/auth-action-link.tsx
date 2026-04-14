@@ -6,6 +6,11 @@ import {
   DEFAULT_AUTH_RETURN_TO,
   type AuthAction
 } from "@/lib/auth-navigation";
+import {
+  AUDIT_STATE_STORAGE_KEY,
+  AUDIT_STORAGE_SECRET_KEY
+} from "@/lib/audit-persistence";
+import { clearCachedAccountStatus } from "@/lib/account-status-cache";
 
 interface AuthActionLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   action: AuthAction;
@@ -23,8 +28,17 @@ export const AuthActionLink = forwardRef<HTMLAnchorElement, AuthActionLinkProps>
         return;
       }
 
+      if (action !== "logout") {
+        return;
+      }
+
       event.preventDefault();
       const origin = window.location.origin;
+
+      window.localStorage.removeItem(AUDIT_STATE_STORAGE_KEY);
+      window.localStorage.removeItem(AUDIT_STORAGE_SECRET_KEY);
+      clearCachedAccountStatus(window.localStorage);
+
       window.location.replace(buildAuthActionHref(action, returnTo, origin));
     }
 
