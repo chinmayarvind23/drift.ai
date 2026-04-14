@@ -54,15 +54,15 @@ export default function ScanPage() {
 
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <PremiumFeatureGate featureName="Drift Score">
-            <Metric
-              label="Drift score"
-              value={scan.scoreLabel}
-              tone={scan.scanState === "drift_detected" ? "amber" : "emerald"}
-              explanation="This is the overall shift from your old spending normal to your recent spending normal. Bigger repeated increases count more than tiny changes. A 0 means no repeated overspend was found in this window."
-              learnHref="/methodology"
-            />
+          <Metric
+            label="Drift score"
+            value={scan.scoreLabel}
+            tone={scan.scanState === "drift_detected" ? "amber" : "emerald"}
+            explanation="This is the overall shift from your old monthly average to your recent monthly average. Bigger repeated increases count more than tiny changes. A 0 means no repeated overspend was found in this window."
+            learnHref="/methodology"
+          />
           </PremiumFeatureGate>
-          <Metric label="Overspend" value={scan.monthlyOverspendLabel} tone="rose" explanation="This is the extra amount showing up each month compared with your old baseline." />
+          <Metric label="Overspend" value={scan.monthlyOverspendLabel} tone="rose" explanation="This is the extra monthly average spend compared with your old monthly average. It is not the total of one transaction." />
           <Metric
             label="If saved and invested"
             value={scan.investmentGainLabel}
@@ -95,6 +95,9 @@ export default function ScanPage() {
               <span>Earlier months {scan.baselineWindowLabel} compared with recent months {scan.recentWindowLabel}.</span>
               <InfoHint text="Drift adapts to the transaction duration: it compares the earliest half of available months with the latest half. With two months, that means one old-normal month versus one recent-normal month." />
             </div>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Each category is averaged by month first. Drift compares your old monthly average with your recent monthly average, so one edited transaction changes the monthly average for that whole window.
+            </p>
           </div>
           <Badge className="w-fit rounded-[8px] border-border bg-background text-muted-foreground">
             {topDriftCategories.length} patterns flagged

@@ -14,6 +14,7 @@ test("imports CSV and updates the Drift Scan dashboard", async ({ page }) => {
   await expect(page.getByText("$2,123")).toBeVisible();
   await expect(page.getByText("$4,800 redirected from overspend")).toBeVisible();
   await expect(page.getByText("Old normal $20. Recent normal $60.")).toBeVisible();
+  await expect(page.getByText("Each category is averaged by month first.")).toBeVisible();
   await page.getByLabel("How this is calculated").first().hover();
   await page.getByRole("link", { name: "Score guide" }).first().click();
   await expect(page).toHaveURL(/\/methodology/);
@@ -345,6 +346,8 @@ test("keeps account and paid report surfaces product-native", async ({ page }) =
   await page.getByRole("link", { name: "Account" }).click();
   await expect(page.getByRole("heading", { name: "Account sync" })).toBeVisible();
   await expect(page.getByText("does not upload raw transactions")).toBeVisible();
+  await expect(page.getByText("Already used this email?")).toHaveCount(0);
+  await expect(page.getByText("Supabase profile")).toHaveCount(0);
 
   await page.getByRole("link", { name: "Report" }).click();
   await expect(page.getByRole("heading", { name: "Executive summary" })).toBeVisible();
